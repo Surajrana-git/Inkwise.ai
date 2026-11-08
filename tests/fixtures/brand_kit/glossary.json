@@ -1,0 +1,4 @@
+[
+  {"id": "T01", "approved": "Lumora Pay", "banned_variants": ["LumoraPay", "Lumora pay"], "note": "Always two words."},
+  {"id": "T02", "approved": "UPI", "banned_variants": ["Upi", "U.P.I."], "note": ""}
+]
