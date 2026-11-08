@@ -2,6 +2,7 @@ streamlit>=1.40
 pydantic>=2.7
 google-genai>=1.0
 chromadb>=0.5
+pysqlite3-binary; sys_platform == "linux"
 python-dotenv>=1.0
 textstat>=0.7
 pymupdf>=1.24
