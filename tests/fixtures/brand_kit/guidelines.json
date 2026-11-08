@@ -1,0 +1,5 @@
+[
+  {"id": "G01", "title": "Friendly, plain tone", "rule": "Write like a helpful friend. Avoid hype words such as revolutionary or game-changing.", "category": "tone", "examples_good": ["Send money in a few taps."], "examples_bad": ["Our revolutionary payments paradigm."]},
+  {"id": "G02", "title": "No unsupported superlatives", "rule": "Do not claim to be the fastest, best or number one unless an approved fact supports it.", "category": "claim"},
+  {"id": "G03", "title": "Accessible links", "rule": "Link text must describe the destination. Never use 'click here'.", "category": "accessibility"}
+]
