@@ -1,0 +1,122 @@
+[
+  {
+    "id": "G01",
+    "title": "Friendly, plain tone",
+    "rule": "Write like a helpful friend. Use familiar words and avoid jargon or hype.",
+    "category": "tone",
+    "examples_good": ["Send money in a few taps."],
+    "examples_bad": ["Revolutionize your financial journey with our paradigm-shifting platform."]
+  },
+  {
+    "id": "G02",
+    "title": "Be clear and concise",
+    "rule": "Put the main point first. Keep sentences short and remove words that do not help the reader.",
+    "category": "tone",
+    "examples_good": ["Your transfer is on its way."],
+    "examples_bad": ["We would like to take this opportunity to inform you that your transfer has now been initiated."]
+  },
+  {
+    "id": "G03",
+    "title": "Sound confident, not pushy",
+    "rule": "Explain what Lumora can do without pressuring people or promising an outcome.",
+    "category": "tone",
+    "examples_good": ["Explore tools that can help you plan your spending."],
+    "examples_bad": ["Sign up now or miss your chance to get rich."]
+  },
+  {
+    "id": "G04",
+    "title": "Use approved product names",
+    "rule": "Use product names exactly as listed in the glossary, including spaces and capitalization.",
+    "category": "terminology",
+    "examples_good": ["Open Lumora Pay to view your activity."],
+    "examples_bad": ["Open LumoraPay to view your activity."]
+  },
+  {
+    "id": "G05",
+    "title": "Explain financial terms",
+    "rule": "When a financial term may be unfamiliar, define it in everyday language the first time it appears.",
+    "category": "terminology",
+    "examples_good": ["An automatic payment is a payment sent on a schedule you choose."],
+    "examples_bad": ["Set up an ACH debit mandate."]
+  },
+  {
+    "id": "G06",
+    "title": "Keep feature names consistent",
+    "rule": "Use the approved name for each feature. Do not invent abbreviations or alternate labels.",
+    "category": "terminology",
+    "examples_good": ["Use Spend Insights to review your monthly spending."],
+    "examples_bad": ["Check your spend dashboard (SID) for monthly spend."]
+  },
+  {
+    "id": "G07",
+    "title": "Substantiate product claims",
+    "rule": "Make factual claims only when supported by a current approved source in the brand kit.",
+    "category": "claim",
+    "examples_good": ["See the transfer estimate shown before you confirm."],
+    "examples_bad": ["Every transfer arrives instantly."]
+  },
+  {
+    "id": "G08",
+    "title": "Avoid guarantees",
+    "rule": "Never guarantee earnings, savings, approval, or uninterrupted service.",
+    "category": "claim",
+    "examples_good": ["Available features may depend on eligibility."],
+    "examples_bad": ["You are guaranteed to save money every month."]
+  },
+  {
+    "id": "G09",
+    "title": "State fees accurately",
+    "rule": "Describe fees only with current approved details, and make any conditions easy to notice.",
+    "category": "claim",
+    "examples_good": ["Review any applicable fee before you confirm."],
+    "examples_bad": ["All transfers are always free."]
+  },
+  {
+    "id": "G10",
+    "title": "Check facts before reuse",
+    "rule": "Do not reuse a dated statistic or time-sensitive statement after its source has expired; request a current source.",
+    "category": "outdated_fact",
+    "examples_good": ["Our latest update shares current account figures."],
+    "examples_bad": ["We still serve 2 million users." ]
+  },
+  {
+    "id": "G11",
+    "title": "Use current availability details",
+    "rule": "Check current country, currency, and platform availability before describing who can use a feature.",
+    "category": "outdated_fact",
+    "examples_good": ["Check the app for current availability in your area."],
+    "examples_bad": ["The service is available everywhere."]
+  },
+  {
+    "id": "G12",
+    "title": "Lead with customer value",
+    "rule": "Explain how a feature helps the customer before describing internal technology or company priorities.",
+    "category": "messaging",
+    "examples_good": ["Track upcoming payments in one place."],
+    "examples_bad": ["Our new infrastructure migration is now live."]
+  },
+  {
+    "id": "G13",
+    "title": "Be transparent about next steps",
+    "rule": "Tell customers what will happen next and what action, if any, they need to take.",
+    "category": "messaging",
+    "examples_good": ["Review the details, then select Confirm to continue."],
+    "examples_bad": ["You're all set." ]
+  },
+  {
+    "id": "G14",
+    "title": "Write for everyone",
+    "rule": "Use respectful, inclusive language. Do not assume a reader's identity, income, or financial experience.",
+    "category": "accessibility",
+    "examples_good": ["Choose the option that works for you."],
+    "examples_bad": ["Every smart investor knows what to do."]
+  },
+  {
+    "id": "G15",
+    "title": "Make instructions accessible",
+    "rule": "Do not rely on color, position, or an image alone to communicate an instruction or status.",
+    "category": "accessibility",
+    "examples_good": ["Select Continue. The status is shown as Approved."],
+    "examples_bad": ["Tap the green button above."]
+  }
+]

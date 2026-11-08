@@ -1,0 +1,92 @@
+[
+  {
+    "id": "T01",
+    "approved": "Lumora Pay",
+    "banned_variants": ["LumoraPay", "Lumora pay", "LPay"],
+    "note": "Always two words, both capitalised."
+  },
+  {
+    "id": "T02",
+    "approved": "Spend Insights",
+    "banned_variants": ["SpendInsight", "Spending Insights", "SI"],
+    "note": "Use the feature name exactly as written."
+  },
+  {
+    "id": "T03",
+    "approved": "Lumora app",
+    "banned_variants": ["Lumora App", "the Lumora application", "L-app"],
+    "note": "Use lowercase app except at the beginning of a sentence."
+  },
+  {
+    "id": "T04",
+    "approved": "transfer",
+    "banned_variants": ["money push", "wire action"],
+    "note": "Use transfer for moving money between accounts or to another recipient."
+  },
+  {
+    "id": "T05",
+    "approved": "scheduled payment",
+    "banned_variants": ["auto debit", "standing instruction"],
+    "note": "Use this plain-language term for a payment set to happen on a schedule."
+  },
+  {
+    "id": "T06",
+    "approved": "transaction notification",
+    "banned_variants": ["txn alert", "transaction ping"],
+    "note": "Spell out notification; avoid abbreviations."
+  },
+  {
+    "id": "T07",
+    "approved": "monthly spending target",
+    "banned_variants": ["monthly budget cap", "spend limit"],
+    "note": "Do not imply that this optional target blocks spending."
+  },
+  {
+    "id": "T08",
+    "approved": "account activity",
+    "banned_variants": ["account feed", "money timeline"],
+    "note": "Use this for the customer's list of recent account transactions."
+  },
+  {
+    "id": "T09",
+    "approved": "in-app support",
+    "banned_variants": ["app helpdesk", "Lumora hotline"],
+    "note": "Use only when referring to support accessed from within the app."
+  },
+  {
+    "id": "T10",
+    "approved": "spending category",
+    "banned_variants": ["spend bucket", "expense class"],
+    "note": "Use this term for a grouping of transactions in Spend Insights."
+  },
+  {
+    "id": "T11",
+    "approved": "profile settings",
+    "banned_variants": ["user console", "account control panel"],
+    "note": "Use this label for the app area where customers manage profile details."
+  },
+  {
+    "id": "T12",
+    "approved": "confirmation step",
+    "banned_variants": ["finalize gate", "submit checkpoint"],
+    "note": "Use this when explaining the review step before submitting a transfer."
+  },
+  {
+    "id": "T13",
+    "approved": "transfer estimate",
+    "banned_variants": ["instant arrival promise", "delivery guarantee"],
+    "note": "An estimate is not a guaranteed delivery time."
+  },
+  {
+    "id": "T14",
+    "approved": "monthly activity statement",
+    "banned_variants": ["monthly ledger", "account dossier"],
+    "note": "Use this for the downloadable monthly summary of account activity."
+  },
+  {
+    "id": "T15",
+    "approved": "eligible customer",
+    "banned_variants": ["approved user", "pre-qualified member"],
+    "note": "Use only when eligibility conditions apply; do not imply guaranteed approval."
+  }
+]
