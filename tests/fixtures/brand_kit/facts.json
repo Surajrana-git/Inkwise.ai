@@ -1,0 +1,5 @@
+[
+  {"id": "F01", "statement": "Lumora Pay has 2 million registered users.", "source": "Q2 2026 investor update", "owner": "Comms", "expires_on": "2026-09-30"},
+  {"id": "F02", "statement": "Transfers between Lumora accounts are free.", "source": "Fee schedule v4", "owner": "Product", "expires_on": null},
+  {"id": "F03", "statement": "Lumora is licensed as a payment aggregator by the RBI.", "source": "Licence 2025-114", "owner": "Legal", "expires_on": "2027-03-31"}
+]

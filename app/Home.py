@@ -8,9 +8,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # make `engine`
 
 import streamlit as st
 
+from engine.bootstrap import startup
 from engine.workflow import ROLES
 
 st.set_page_config(page_title="INKWISE AI", page_icon="🖋️", layout="wide")
+
+
+@st.cache_resource(show_spinner="Loading brand kit…")
+def get_state():
+    return startup()  # DB tables + knowledge index, once per server process
+
+
+state = get_state()
+if state.using_sample_kit:
+    st.warning("Using the small sample brand kit. Add data/brand_kit/*.json to load Lumora.")
 
 st.title("INKWISE AI")
 st.caption("Brand governance before you publish: every finding cites its source.")
