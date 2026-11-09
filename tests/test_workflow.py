@@ -94,3 +94,56 @@ def test_unknown_items_and_bad_input():
     with pytest.raises(wf.WorkflowError, match="not found"):
         wf.decide_finding(cid, "f-9", FindingStatus.ACCEPTED, "asha")
     assert wf.export_audit_log().count("\n") >= 1
+
+
+# ---------------- UI adapters used by app/services.py
+def ui_finding(fid, status="open", source="G07"):
+    return {"id": fid, "category": "claim", "span": "fastest app", "source_id": source, "source_text": "",
+            "why": "unsupported", "suggested_fix": "a fast app", "confidence": 0.8,
+            "checked_by": "ai", "status": status}
+
+
+def test_submit_list_decide_roundtrip():
+    sid = wf.submit_for_approval("Launch post", "We are the fastest app.",
+                                 [ui_finding("f-1", "accepted"), ui_finding("f-2", "rejected", "UNVERIFIED")], "asha")
+    pending = wf.list_submissions("pending")
+    assert [s["id"] for s in pending] == [sid]
+    s = pending[0]
+    assert {f["id"]: f["status"] for f in s["findings"]} == {"f-1": "accepted", "f-2": "rejected"}
+    assert s["version"] == 1 and s["decided_by"] == ""
+
+    wf.decide_submission(sid, "rejected", "tone down the claim", "meera", "manager")
+    done = wf.list_submissions("rejected")[0]
+    assert done["decided_by"] == "meera" and done["comment"] == "tone down the claim"
+    assert wf.list_submissions("pending") == []
+
+
+def test_decide_rules_raise_readable_errors():
+    sid = wf.submit_for_approval("Post", "text", [ui_finding("f-1")], "asha")
+    with pytest.raises(wf.WorkflowError, match="own content"):
+        wf.decide_submission(sid, "approved", "", "asha", "manager")
+    with pytest.raises(wf.WorkflowError, match="still open"):
+        wf.decide_submission(sid, "approved", "", "meera", "manager")
+
+
+def test_dashboard_activity_and_login(monkeypatch):
+    wf.submit_for_approval("Post", "text", [ui_finding("f-1")], "asha")
+    stats = wf.get_dashboard_stats("manager")
+    assert stats["reviews_today"] == 1 and stats["open_findings"] == 1 and stats["pending_approvals"] == 1
+    act = wf.get_recent_activity(3)
+    assert act[0]["who"] == "inkwise-ai" and act[0]["status"] in ("open", "ok", "bad")
+    monkeypatch.setenv("INKWISE_DEMO_PASSWORD", "pw")
+    assert wf.authenticate("meera", "pw", "manager") == {"user": "meera", "role": "manager"}
+    assert wf.authenticate("meera", "wrong", "manager") is None
+
+
+def test_tables_created_automatically(tmp_path, monkeypatch):
+    monkeypatch.setenv("INKWISE_DB", str(tmp_path / "fresh.sqlite3"))
+    assert wf.list_submissions() == []
+
+
+def test_ui_role_names_any_case():
+    sid = wf.submit_for_approval("Post", "text", [ui_finding("f-1", "accepted")], "asha")
+    wf.decide_submission(sid, "approved", "", "meera", "Manager")
+    assert wf.list_submissions("approved")[0]["decided_by"] == "meera"
+    assert wf.get_dashboard_stats("Admin")["pending_approvals"] == 0

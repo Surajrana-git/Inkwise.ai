@@ -47,6 +47,9 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+_ready: set[str] = set()  # DB paths whose tables exist in this process
+
+
 @contextmanager
 def _conn() -> Iterator[sqlite3.Connection]:
     path = _db_path()
@@ -55,6 +58,9 @@ def _conn() -> Iterator[sqlite3.Connection]:
     con = sqlite3.connect(path, timeout=10)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
+    if path not in _ready:  # tables are created on first use, so the UI never needs init_db()
+        _create_tables(con)
+        _ready.add(path)
     try:
         yield con
         con.commit()
@@ -118,9 +124,20 @@ CREATE TABLE IF NOT EXISTS audit_log (
 """
 
 
+def _create_tables(con: sqlite3.Connection) -> None:
+    con.executescript(SCHEMA)
+    # columns added after Step 6: older local databases get them here
+    have = {r[1] for r in con.execute("PRAGMA table_info(content)")}
+    for col in ("decided_by", "decided_at", "decision_comment"):
+        if col not in have:
+            con.execute(f"ALTER TABLE content ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
+    con.commit()
+
+
 def init_db() -> None:
-    with _conn() as con:
-        con.executescript(SCHEMA)
+    _ready.discard(_db_path())
+    with _conn():
+        pass
 
 
 def _log(con: sqlite3.Connection, content_id: Optional[int], user: str, action: str, detail: str = "") -> None:
@@ -135,9 +152,12 @@ def _get_content(con: sqlite3.Connection, content_id: int) -> sqlite3.Row:
     return row
 
 
-def _check_role(role: str) -> None:
-    if role not in ROLES:
+def _check_role(role: str) -> str:
+    """Validate a role (any capitalisation, e.g. the UI's "Manager") and return it lower-case."""
+    r = (role or "").strip().lower()
+    if r not in ROLES:
         raise WorkflowError(f"Unknown role '{role}'")
+    return r
 
 
 # ---------------------------------------------------------------- creator actions
@@ -216,7 +236,7 @@ def decide_finding(content_id: int, finding_id: str, status: FindingStatus,
 
 def approve(content_id: int, user: str, role: str, approved: bool, comment: str = "") -> None:
     """Approve, or request changes. Only manager / reviewer / admin may do this."""
-    _check_role(role)
+    role = _check_role(role)
     if role not in APPROVER_ROLES:
         raise WorkflowError(f"Role '{role}' cannot approve content")
     with _conn() as con:
@@ -231,7 +251,9 @@ def approve(content_id: int, user: str, role: str, approved: bool, comment: str 
                                  (content_id, row["current_version"])).fetchone()[0]
             if open_n:
                 raise WorkflowError(f"{open_n} findings are still open; resolve them or add a comment explaining why")
-        con.execute("UPDATE content SET status = ?, updated_at = ? WHERE id = ?", (new, _now(), content_id))
+        now = _now()
+        con.execute("UPDATE content SET status = ?, updated_at = ?, decided_by = ?, decided_at = ?, "
+                    "decision_comment = ? WHERE id = ?", (new, now, user, now, comment, content_id))
         _log(con, content_id, user, new, f"v{row['current_version']} · {role}" + (f" · {comment}" if comment else ""))
 
 
@@ -254,7 +276,7 @@ def get_content(content_id: int) -> dict:
 
 def queue(role: str, user: Optional[str] = None) -> list[dict]:
     """Items waiting for this role. Creators see their own drafts and returned items."""
-    _check_role(role)
+    role = _check_role(role)
     with _conn() as con:
         if role == "admin":
             rows = con.execute("SELECT * FROM content ORDER BY updated_at DESC").fetchall()
@@ -300,3 +322,110 @@ def export_audit_log() -> str:
     with _conn() as con:
         rows = con.execute("SELECT * FROM audit_log ORDER BY id").fetchall()
     return "\n".join(json.dumps(dict(r)) for r in rows)
+
+
+# ---------------------------------------------------------------- UI adapters (Aashi's app/services.py)
+# The Streamlit pages work with "submissions": one piece of content sent for approval
+# together with the findings the creator already accepted / edited / rejected.
+
+_UI_STATUS = {"in_review": "pending", "approved": "approved", "changes_requested": "rejected", "draft": "draft"}
+
+
+def _finding_from_ui(d: dict) -> Finding:
+    data = {k: d[k] for k in Finding.model_fields if k in d}
+    data["status"] = d.get("status") or "open"
+    return Finding.model_validate(data)
+
+
+def submit_for_approval(title: str, text: str, findings: list[dict], author: str) -> str:
+    """Save content + its findings (with the creator's decisions) and send it for approval."""
+    cid = submit_content(author, title, text)
+    parsed = [_finding_from_ui(f) for f in findings]
+    save_review(cid, ReviewResult(text=text, findings=parsed))
+    for f in parsed:  # record creator decisions so they count for Clarity Insights
+        if f.status != FindingStatus.OPEN:
+            decide_finding(cid, f.id, f.status, author)
+    return str(cid)
+
+
+def _submission(row: sqlite3.Row) -> dict:
+    item = get_content(row["id"])
+    return {
+        "id": str(row["id"]), "title": row["title"], "author": row["author"],
+        "status": _UI_STATUS.get(row["status"], row["status"]), "version": row["current_version"],
+        "text": item["text"], "findings": [f.model_dump(mode="json") for f in item["findings"]],
+        "submitted_at": row["created_at"][:16].replace("T", " "),
+        "decided_by": row["decided_by"], "decided_at": row["decided_at"][:16].replace("T", " "),
+        "comment": row["decision_comment"],
+    }
+
+
+def list_submissions(status: Optional[str] = None) -> list[dict]:
+    """All submissions, newest first. status: pending | approved | rejected | None for all."""
+    with _conn() as con:
+        rows = con.execute("SELECT * FROM content WHERE status != 'draft' ORDER BY updated_at DESC").fetchall()
+    subs = [_submission(r) for r in rows]
+    return [s for s in subs if status is None or s["status"] == status]
+
+
+def decide_submission(sub_id: str, decision: str, comment: str, user: str, role: str) -> None:
+    """decision: 'approved' or 'rejected'. Raises WorkflowError with a readable message."""
+    if decision not in ("approved", "rejected"):
+        raise WorkflowError(f"Unknown decision '{decision}'")
+    approve(int(sub_id), user, role, approved=(decision == "approved"), comment=comment)
+
+
+_ACTIVITY = {
+    "created": ("created", "open"), "reviewed": ("ran a review on", "open"),
+    "new_version": ("saved a new version of", "open"),
+    "finding_accepted": ("accepted a finding in", "ok"), "finding_edited": ("edited a fix in", "ok"),
+    "finding_rejected": ("rejected a finding in", "bad"),
+    "approved": ("approved", "ok"), "changes_requested": ("requested changes on", "bad"),
+}
+
+
+def get_recent_activity(limit: int = 5) -> list[dict]:
+    """Latest audit-log events for the dashboard: when, who, what, status (open | ok | bad)."""
+    with _conn() as con:
+        rows = con.execute("SELECT a.user, a.action, a.at, c.title FROM audit_log a "
+                           "LEFT JOIN content c ON c.id = a.content_id ORDER BY a.id DESC LIMIT ?",
+                           (limit,)).fetchall()
+    out = []
+    for r in rows:
+        verb, status = _ACTIVITY.get(r["action"], (r["action"].replace("_", " "), "open"))
+        out.append({"when": r["at"][11:16], "who": r["user"], "what": f"{verb} “{r['title'] or ''}”",
+                    "status": status})
+    return out
+
+
+def get_dashboard_stats(role: str) -> dict:
+    """Numbers for the home screen."""
+    _check_role(role)
+    today = datetime.now(timezone.utc).date().isoformat()
+    with _conn() as con:
+        reviews = con.execute("SELECT COUNT(*) FROM audit_log WHERE action = 'reviewed' AND at LIKE ?",
+                              (today + "%",)).fetchone()[0]
+        open_f = con.execute("SELECT COUNT(*) FROM findings f JOIN content c ON c.id = f.content_id "
+                             "AND f.version = c.current_version WHERE f.status = 'open' "
+                             "AND c.status != 'approved'").fetchone()[0]
+        pending = con.execute("SELECT COUNT(*) FROM content WHERE status = 'in_review'").fetchone()[0]
+    try:
+        from engine import knowledge
+        expired = sum(f.is_expired() for f in knowledge.get_kb().facts)
+    except Exception:
+        expired = "–"
+    return {"reviews_today": reviews, "open_findings": open_f, "pending_approvals": pending,
+            "expired_facts": expired}
+
+
+def authenticate(username: str, password: str, role: str) -> Optional[dict]:
+    """Demo sign-in: any username with the shared demo password (INKWISE_DEMO_PASSWORD)."""
+    import hmac
+
+    _check_role(role)
+    expected = os.getenv("INKWISE_DEMO_PASSWORD", "inkwise-demo")
+    if username.strip() and hmac.compare_digest(password.encode(), expected.encode()):
+        with _conn() as con:
+            _log(con, None, username.strip(), "signed_in", role)
+        return {"user": username.strip(), "role": role}
+    return None
