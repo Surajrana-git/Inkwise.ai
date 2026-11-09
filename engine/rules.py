@@ -16,7 +16,9 @@ from engine.schemas import UNVERIFIED, Category, CheckedBy, Fact, Finding, Sourc
 
 READABILITY_GUIDELINE = "G14"   # "Write for everyone" in the Lumora brand kit
 MAX_GRADE = 10.0                # Flesch-Kincaid grade above this is flagged
-MIN_WORDS = 20                  # too short to judge below this
+MIN_WORDS = 20                  # whole-text check needs at least this many words
+MIN_SENTENCE_WORDS = 10         # a single sentence is judged from this length
+MAX_SENTENCE_GRADE = 14.0       # one sentence above this grade is flagged on its own
 
 _SENTENCE = re.compile(r"[^.!?\n]+[.!?]*")
 _STOP = set("a an the and or of to in on for with is are be by as at it this that we our you your "
@@ -64,8 +66,18 @@ def _words(s: str) -> set[str]:
     return {_stem(w) for w in re.findall(r"[a-z0-9]+", s.lower()) if w not in _STOP}
 
 
+_SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6, "lakh": 1e5, "lakhs": 1e5,
+          "crore": 1e7, "crores": 1e7, "b": 1e9, "bn": 1e9, "billion": 1e9}
+_NUM = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|mn|m|million|lakhs?|crores?|bn|b|billion)?\b", re.I)
+
+
 def _numbers(s: str) -> set[str]:
-    return set(re.findall(r"\d+(?:\.\d+)?", s))
+    """Numbers normalised so '2M', '2 million' and '2,000,000' all become '2000000' (S8)."""
+    out = set()
+    for num, unit in _NUM.findall(s):
+        v = float(num.replace(",", "")) * _SCALE.get(unit.lower(), 1) if unit else float(num.replace(",", ""))
+        out.add(f"{v:g}" if v < 1e5 else str(int(v)))
+    return out
 
 
 def check_expired_facts(text: str, facts: list[Fact], today: Optional[date] = None) -> list[Finding]:
@@ -83,7 +95,9 @@ def check_expired_facts(text: str, facts: list[Fact], today: Optional[date] = No
             fw = _words(f.statement)
             overlap = len(sw & fw)
             ratio = overlap / len(fw) if fw else 0.0
-            if _numbers(f.statement) <= sn and overlap >= 3 and ratio >= 0.5 and ratio > best_ratio:
+            fn = _numbers(f.statement)
+            reworded = any(float(n) >= 1000 for n in fn) and overlap >= 2   # S8: '2M users' vs '2 million users'
+            if fn <= sn and (reworded or (overlap >= 3 and ratio >= 0.5)) and ratio > best_ratio:
                 best, best_ratio = f, ratio
         if best:
             out.append(Finding(
@@ -99,12 +113,16 @@ def check_expired_facts(text: str, facts: list[Fact], today: Optional[date] = No
 
 def check_readability(text: str, source: Optional[SourceMatch] = None) -> list[Finding]:
     """Flag hard-to-read text. `source` is the accessibility guideline (G14) if the kit has it."""
-    if len(text.split()) < MIN_WORDS:
+    # S7: judge the whole text, and also each long sentence on its own, so one very
+    # dense sentence in a short post is still caught.
+    sents = [x for x in _sentences(text) if x.strip()]
+    dense = [(textstat.flesch_kincaid_grade(x), x) for x in sents if len(x.split()) >= MIN_SENTENCE_WORDS]
+    worst = max(dense, default=(0.0, ""))
+    whole = textstat.flesch_kincaid_grade(text) if len(text.split()) >= MIN_WORDS else 0.0
+    if whole <= MAX_GRADE and worst[0] <= MAX_SENTENCE_GRADE:
         return []
-    grade = textstat.flesch_kincaid_grade(text)
-    if grade <= MAX_GRADE:
-        return []
-    longest = max(_sentences(text), key=lambda s: len(s.split()))
+    grade = max(whole, worst[0])
+    longest = worst[1] if worst[0] > MAX_SENTENCE_GRADE else max(sents, key=lambda s: len(s.split()))
     return [Finding(
         id="", category=Category.ACCESSIBILITY, span=longest,
         source_id=source.source_id if source else UNVERIFIED,
