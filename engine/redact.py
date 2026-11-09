@@ -11,6 +11,12 @@ from __future__ import annotations
 import re
 
 ALLOW = {"Lumora"}  # brand words that must never be masked as names
+# Capitalised words that start sentences or name places/products, never people (S4)
+_COMMON = set("""The A An We Our You Your This That These Those It Its Join Open Click Call Contact Get Try
+Sign Send Pay New Now Today Download Learn Read See Check Use Visit Start Meet Hi Hello Dear Thanks Team
+India Indian UPI RBI Google Apple Play Store App Android Monday Tuesday Wednesday Thursday Friday Saturday
+Sunday January February March April May June July August September October November December""".split())
+_CAP_RUN = re.compile(r"\b[A-Z][a-z]{1,15}(?:\s+[A-Z][a-z]{1,15})+\b")
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _PAN = re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")
@@ -20,7 +26,8 @@ _CUE_NAME = re.compile(
     r"(?i:\b(?:my name is|dear|regards,?|thanks,?|sincerely,?)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)")
 
 
-def redact_with_map(text: str) -> tuple[str, dict[str, str]]:
+def redact_with_map(text: str, allow: set[str] | None = None) -> tuple[str, dict[str, str]]:
+    allow = ALLOW | _COMMON | (allow or set())
     mapping: dict[str, str] = {}
     counters: dict[str, int] = {}
 
@@ -42,7 +49,7 @@ def redact_with_map(text: str) -> tuple[str, dict[str, str]]:
 
     def cue(m: re.Match) -> str:
         name = m.group(1)
-        if name.split()[0] in ALLOW:
+        if name.split()[0] in allow:
             return m.group()
         return m.group().replace(name, put("NAME", name))
 
@@ -51,6 +58,22 @@ def redact_with_map(text: str) -> tuple[str, dict[str, str]]:
     text = _DIGITS.sub(digits, text)
     text = _TITLE_NAME.sub(lambda m: put("NAME", m.group()), text)
     text = _CUE_NAME.sub(cue, text)
+    # S4: runs of capitalised words such as "Call Priya Sharma": drop brand, product and
+    # common words from the edges; two or more words left over are treated as a name.
+    def full_name(m: re.Match) -> str:
+        words = m.group().split()
+        i, j = 0, len(words)
+        while i < j and words[i] in allow:
+            i += 1
+        while j > i and words[j - 1] in allow:
+            j -= 1
+        core = words[i:j]
+        if len(core) < 2 or any(w in allow for w in core):
+            return m.group()
+        name = " ".join(core)
+        return m.group().replace(name, put("NAME", name))
+
+    text = _CAP_RUN.sub(full_name, text)
     return text, mapping
 
 

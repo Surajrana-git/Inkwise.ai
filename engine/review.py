@@ -23,8 +23,8 @@ from engine.schemas import UNVERIFIED, Category, CheckedBy, Finding, ReviewResul
 log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gemini-flash-latest"
-MAX_TRIES = 5
-TIMEOUT_MS = 45_000  # give up on one Gemini call after 45 seconds
+MAX_TRIES = 3          # S2: worst case ~1 minute, not ~5
+TIMEOUT_MS = 20_000  # give up on one Gemini call after 20 seconds
 MAX_AI_FINDINGS = 10
 UNVERIFIED_MAX_CONFIDENCE = 0.6
 _sleep = time.sleep  # replaced in tests
@@ -115,6 +115,11 @@ def _exact_slice(span: str, text: str) -> Optional[str]:
 
 def _ai_findings(text: str, safe: str, mapping: dict[str, str], kb, generate: LLM) -> list[Finding]:
     sources = {m.source_id: m.text for m in kb.search(safe)}
+    # S5: claim rules (no superlatives, guarantees, fee claims) apply to almost any marketing
+    # text but rarely match by keywords, so they are always sent to the model.
+    for g in kb.guidelines:
+        if g.category == Category.CLAIM and g.id not in sources:
+            sources[g.id] = kb.get(g.id).text
     listing = "\n".join(f"{k}: {v}" for k, v in sources.items()) or "(none)"
     items = _parse(generate(PROMPT.format(sources=listing, text=safe)))
 
@@ -127,7 +132,7 @@ def _ai_findings(text: str, safe: str, mapping: dict[str, str], kb, generate: LL
         if span not in text:
             continue
         try:
-            category = Category(item.get("category"))
+            category = Category(str(item.get("category", "")).strip().lower())  # S6
         except ValueError:
             continue
         sid = item.get("source_id")
@@ -172,7 +177,8 @@ def review_text(text: str, kb: Optional[knowledge.KnowledgeBase] = None,
     kb / llm are for tests and evaluation; the app just calls review_text(text).
     """
     kb = kb or knowledge.get_kb()
-    safe, mapping = redact.redact_with_map(text)
+    allow = {w for t in kb.terms for w in t.approved.split()}  # product names are never masked as names
+    safe, mapping = redact.redact_with_map(text, allow=allow)
 
     rule_f = (rules.check_terminology(text, kb.terms)
               + rules.check_expired_facts(text, kb.facts)
@@ -180,13 +186,17 @@ def review_text(text: str, kb: Optional[knowledge.KnowledgeBase] = None,
 
     ai_f: list[Finding] = []
     model = ""
+    ai_error = ""
     generate = llm or (_gemini_generate if os.getenv("GEMINI_API_KEY") else None)
+    if use_ai and not generate:
+        ai_error = "AI review is off: GEMINI_API_KEY is not set. Showing rule checks only."
     if use_ai and generate and text.strip():
         try:
             ai_f = _ai_findings(text, safe, mapping, kb, generate)
             model = _model_name() if llm is None else "injected-llm"
         except Exception as e:  # never crash the app because Gemini is down
             log.warning("AI review failed, returning rule findings only: %s", e)
+            ai_error = f"AI review unavailable ({type(e).__name__}). Showing rule checks only."  # S3
 
     return ReviewResult(text=safe, findings=_merge(text, rule_f, ai_f),
-                        redactions=len(mapping), model=model)
+                        redactions=len(mapping), model=model, ai_error=ai_error)
