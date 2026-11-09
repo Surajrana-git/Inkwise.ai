@@ -109,3 +109,4 @@ class ReviewResult(BaseModel):
     findings: list[Finding] = []
     redactions: int = 0                            # how many personal-data items were masked
     model: str = ""                                # e.g. "gemini-…" for disclosure
+    ai_error: str = ""                             # set when the AI part did not run (UI shows a warning)
