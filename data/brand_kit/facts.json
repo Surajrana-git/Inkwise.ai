@@ -1,0 +1,142 @@
+[
+  {
+    "id": "F01",
+    "statement": "Lumora Pay has 2 million registered users.",
+    "source": "Lumora Q2 2026 investor update (synthetic demo source)",
+    "owner": "Comms team",
+    "expires_on": "2026-09-30"
+  },
+  {
+    "id": "F02",
+    "statement": "Lumora Pay supports transfers in 12 currencies.",
+    "source": "Lumora product availability sheet, May 2026 (synthetic demo source)",
+    "owner": "Product marketing",
+    "expires_on": "2026-08-31"
+  },
+  {
+    "id": "F03",
+    "statement": "The Lumora app has a 4.8 out of 5 average rating.",
+    "source": "Lumora app store snapshot, June 2026 (synthetic demo source)",
+    "owner": "Customer experience",
+    "expires_on": "2026-07-31"
+  },
+  {
+    "id": "F04",
+    "statement": "Lumora customers made 5 million transfers in Q1 2026.",
+    "source": "Lumora Q1 2026 operations report (synthetic demo source)",
+    "owner": "Data team",
+    "expires_on": "2026-06-30"
+  },
+  {
+    "id": "F05",
+    "statement": "Spend Insights launched for eligible Lumora Pay customers in March 2026.",
+    "source": "Lumora product launch brief, March 2026 (synthetic demo source)",
+    "owner": "Product marketing",
+    "expires_on": "2026-09-01"
+  },
+  {
+    "id": "F06",
+    "statement": "Lumora support is available seven days a week.",
+    "source": "Lumora support operations sheet, Q2 2026 (synthetic demo source)",
+    "owner": "Customer support",
+    "expires_on": "2026-10-01"
+  },
+  {
+    "id": "F07",
+    "statement": "Lumora Pay is available in 8 markets.",
+    "source": "Lumora market list, April 2026 (synthetic demo source)",
+    "owner": "Market operations",
+    "expires_on": "2026-08-15"
+  },
+  {
+    "id": "F08",
+    "statement": "Lumora's average onboarding time was under 6 minutes in Q1 2026.",
+    "source": "Lumora onboarding analysis, Q1 2026 (synthetic demo source)",
+    "owner": "Growth analytics",
+    "expires_on": "2026-07-15"
+  },
+  {
+    "id": "F09",
+    "statement": "Lumora Pay lets customers review transfer details before confirming.",
+    "source": "Lumora Pay product guide, version 3.2 (synthetic demo source)",
+    "owner": "Payments product",
+    "expires_on": null
+  },
+  {
+    "id": "F10",
+    "statement": "Customers can turn on transaction notifications in app settings.",
+    "source": "Lumora app help center, reviewed October 2026 (synthetic demo source)",
+    "owner": "Customer support",
+    "expires_on": "2027-04-30"
+  },
+  {
+    "id": "F11",
+    "statement": "Spend Insights groups eligible transactions by spending category.",
+    "source": "Spend Insights product specification, version 2.1 (synthetic demo source)",
+    "owner": "Product team",
+    "expires_on": null
+  },
+  {
+    "id": "F12",
+    "statement": "Customers can download a monthly activity statement from the app.",
+    "source": "Lumora app help center, reviewed October 2026 (synthetic demo source)",
+    "owner": "Customer support",
+    "expires_on": "2027-03-31"
+  },
+  {
+    "id": "F13",
+    "statement": "Lumora uses a confirmation step before a customer submits a transfer.",
+    "source": "Lumora Pay product guide, version 3.2 (synthetic demo source)",
+    "owner": "Payments product",
+    "expires_on": null
+  },
+  {
+    "id": "F14",
+    "statement": "Lumora support can help customers find the in-app dispute form.",
+    "source": "Lumora support playbook, reviewed October 2026 (synthetic demo source)",
+    "owner": "Customer support",
+    "expires_on": "2027-02-28"
+  },
+  {
+    "id": "F15",
+    "statement": "Customers can set a monthly spending target in Spend Insights.",
+    "source": "Spend Insights product specification, version 2.1 (synthetic demo source)",
+    "owner": "Product team",
+    "expires_on": "2027-01-31"
+  },
+  {
+    "id": "F16",
+    "statement": "Lumora Pay supports biometric sign-in on compatible devices.",
+    "source": "Lumora app security guide, reviewed September 2026 (synthetic demo source)",
+    "owner": "Security team",
+    "expires_on": "2027-03-31"
+  },
+  {
+    "id": "F17",
+    "statement": "Transfer availability and timing can depend on the destination and payment method.",
+    "source": "Lumora transfer terms, reviewed October 2026 (synthetic demo source)",
+    "owner": "Payments operations",
+    "expires_on": "2027-04-30"
+  },
+  {
+    "id": "F18",
+    "statement": "Customers can update their contact details in profile settings.",
+    "source": "Lumora app help center, reviewed October 2026 (synthetic demo source)",
+    "owner": "Customer support",
+    "expires_on": "2027-04-30"
+  },
+  {
+    "id": "F19",
+    "statement": "Lumora provides an in-app view of recent account activity.",
+    "source": "Lumora Pay product guide, version 3.2 (synthetic demo source)",
+    "owner": "Payments product",
+    "expires_on": null
+  },
+  {
+    "id": "F20",
+    "statement": "Customers can review any displayed fee before confirming a transfer.",
+    "source": "Lumora transfer terms, reviewed October 2026 (synthetic demo source)",
+    "owner": "Payments operations",
+    "expires_on": "2027-04-30"
+  }
+]
