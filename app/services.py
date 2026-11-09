@@ -93,7 +93,9 @@ def _to_dict(f) -> dict:
 # ---------------------------------------------------------------- REVIEW (engine/review.py)
 def review_text(text: str) -> list[dict]:
     mod = _module("review", "engine.review", ["review_text"])
-    return [_to_dict(f) for f in mod.review_text(text)]
+    result = mod.review_text(text)
+    # engine returns a ReviewResult; fall back to a plain list if it ever does
+    return [_to_dict(f) for f in getattr(result, "findings", result)]
 
 
 # ---------------------------------------------------------------- WORKFLOW (engine/workflow.py)
@@ -129,6 +131,13 @@ def _records(path: Path) -> list[dict]:
     return data
 
 
+def _join(value) -> str:
+    """banned_variants is a list; the UI wants one string."""
+    if isinstance(value, (list, tuple)):
+        return ", ".join(str(v) for v in value)
+    return str(value or "")
+
+
 def get_knowledge_base() -> dict:
     check("knowledge")
     today = dt.date.today()
@@ -136,17 +145,31 @@ def get_knowledge_base() -> dict:
     f = _records(KIT / "facts.json")
     t = _records(KIT / "glossary.json")
 
-    guidelines = [{"id": x.get("id"), "title": x.get("title") or x.get("name", ""),
-                   "text": x.get("text") or x.get("rule", "")} for x in g]
+    guidelines = [{"id": x.get("id"),
+                   "title": x.get("title", ""),
+                   "text": x.get("rule", ""),
+                   "category": x.get("category", ""),
+                   "examples_good": x.get("examples_good", []),
+                   "examples_bad": x.get("examples_bad", [])} for x in g]
+
     facts = []
     for x in f:
-        exp = x.get("expires") or x.get("expiry") or x.get("expiry_date")
+        exp = x.get("expires_on")          # may be null = never expires
         expired = bool(exp) and dt.date.fromisoformat(str(exp)[:10]) < today
-        facts.append({"id": x.get("id"), "text": x.get("text") or x.get("fact", ""),
+        facts.append({"id": x.get("id"),
+                      "text": x.get("statement", ""),
+                      "source": x.get("source", ""),
+                      "owner": x.get("owner", ""),
                       "expires": exp, "expired": expired})
-    glossary = [{"id": x.get("id"), "avoid": x.get("avoid") or x.get("term", ""),
-                 "use": x.get("use") or x.get("preferred", ""), "note": x.get("note", "")} for x in t]
+
+    glossary = [{"id": x.get("id"),
+                 "avoid": _join(x.get("banned_variants")),
+                 "use": x.get("approved", ""),
+                 "note": x.get("note", "")} for x in t]
+
     return {"guidelines": guidelines, "facts": facts, "glossary": glossary}
+
+
 def authenticate(username: str, password: str, role: str) -> dict | None:
     """Returns {"user": ..., "role": ...} on success, or None for wrong details."""
     mod = _module("workflow", "engine.workflow", ["authenticate"])
