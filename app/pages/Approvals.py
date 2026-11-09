@@ -49,14 +49,23 @@ for s in pending:
 
         comment = st.text_input("Comment (optional)", key=f"c_{s['id']}")
         a, b, _ = st.columns([1, 1, 4])
+
+        decision = None
         if a.button("Approve", key=f"ap_{s['id']}", type="primary", disabled=not can_decide,
                     use_container_width=True):
-            services.decide_submission(s["id"], "approved", comment, ss.user, ss.role)
-            st.toast(f"Approved {s['title']}", icon="✅")
-            st.rerun()
-        if b.button("Reject", key=f"rj_{s['id']}", disabled=not can_decide, use_container_width=True):
-            services.decide_submission(s["id"], "rejected", comment, ss.user, ss.role)
-            st.toast(f"Rejected {s['title']}", icon="❌")
-            st.rerun()
+            decision = ("approved", "✅", "Approved")
+        elif b.button("Reject", key=f"rj_{s['id']}", disabled=not can_decide,
+                      use_container_width=True):
+            decision = ("rejected", "❌", "Rejected")
+
+        if decision:
+            status, icon, label = decision
+            try:
+                services.decide_submission(s["id"], status, comment, ss.user, ss.role)
+            except Exception as e:
+                st.error(str(e))
+            else:
+                st.toast(f"{label} {s['title']}", icon=icon)
+                st.rerun()
 
 theme.ai_banner()
