@@ -56,7 +56,20 @@ All demo data is synthetic: **Lumora** is a fictional fintech brand created by t
 
 ## Screenshots
 
-*To be added in `docs/screenshots/`: Home, Review with highlights, expanded finding, Approvals, History.*
+1.Home Dashboard
+<img width="1600" height="757" alt="image" src="https://github.com/user-attachments/assets/82a10684-9c0d-4462-be1c-1ec3cfb90b7f" />
+
+2.Review Page with Findings
+<img width="1600" height="763" alt="image" src="https://github.com/user-attachments/assets/8fb9135e-de75-4299-b712-e625156fb3cf" />
+
+3.Approvals Page
+<img width="1600" height="757" alt="image" src="https://github.com/user-attachments/assets/4a572241-7221-4d2a-95e0-96595ee00889" />
+
+4.History Page
+<img width="1600" height="762" alt="image" src="https://github.com/user-attachments/assets/9aeeab82-71c1-483d-ad9a-ddb55fd22c66" />
+
+5.Knowledge Base
+<img width="1600" height="761" alt="image" src="https://github.com/user-attachments/assets/203d4d24-2b3a-4b32-89ed-afe52f1fb822" />
 
 ## Evaluation
 
