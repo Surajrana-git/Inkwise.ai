@@ -82,11 +82,11 @@ def render_row(f):
         else:
             b1, b2, b3, _ = st.columns([1, 1, 1, 3])
             b1.button("Accept", key=f"acc_{fid}", on_click=set_status, args=(fid, "accepted"),
-                      type="primary", use_container_width=True)
+                      type="primary", width="stretch")
             b2.button("Edit", key=f"edt_{fid}", on_click=toggle_edit, args=(fid,),
-                      use_container_width=True)
+                      width="stretch")
             b3.button("Reject", key=f"rej_{fid}", on_click=set_status, args=(fid, "rejected"),
-                      use_container_width=True)
+                      width="stretch")
 
 
 st.title("Review")
@@ -104,7 +104,7 @@ left, right = st.columns([1, 1.3], gap="large")
 with left:
     st.text_input("Title", key="rv_title", placeholder="e.g. Spring launch email")
     st.text_area("Your content", key="rv_text", height=280, placeholder="Paste your text here...")
-    run = st.button("Run review", type="primary", use_container_width=True, disabled=not review_ready)
+    run = st.button("Run review", type="primary", width="stretch", disabled=not review_ready)
     if run:
         if not ss.rv_text.strip():
             st.warning("Paste some text first, then run the review.")
@@ -134,9 +134,9 @@ with right:
             n_ok = sum(f["status"] in ("accepted", "edited") for f in findings)
             n_rej = sum(f["status"] == "rejected" for f in findings)
             theme.metric_row([
-                (len(findings), "Findings", ""),
+                (len(findings), "Total", ""),
                 (n_open, "Open", "warn" if n_open else ""),
-                (n_ok, "Accepted", "ok"),
+                (n_ok, "Done", "ok"),
                 (n_rej, "Rejected", ""),
             ])
 
