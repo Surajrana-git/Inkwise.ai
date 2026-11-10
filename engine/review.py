@@ -111,10 +111,14 @@ def _gemini_generate(prompt: str) -> str:
                 _last_model = model
                 return resp.text or ""
             except Exception as e:
-                if not _retryable(e):
-                    raise
                 last_error = e
-                log.warning("Gemini %s busy (%s), attempt %d", model, type(e).__name__, attempt + 1)
+                msg = str(e)[:200]
+                if any(x in msg for x in ("API_KEY_INVALID", "API key not valid")):
+                    raise                                   # a bad key fails on every model
+                if not _retryable(e):
+                    log.warning("Gemini %s unavailable for this key (%s): %s", model, type(e).__name__, msg)
+                    break                                   # e.g. NOT_FOUND / not on free tier: next model
+                log.warning("Gemini %s busy (%s), attempt %d: %s", model, type(e).__name__, attempt + 1, msg)
                 if attempt == 0:
                     _sleep(2.0)
     raise last_error or RuntimeError("No Gemini model available")
