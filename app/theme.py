@@ -1,25 +1,39 @@
-"""Shared INKWISE look & feel. Every page calls render_shell() once at the top."""
 import base64
+import html
 from pathlib import Path
 
 import streamlit as st
 
 import services
 
-# ---- Switch this to True once engine/workflow.py has authenticate() ----
 REQUIRE_LOGIN = False
 
-APP_DIR = Path(__file__).resolve().parent   # .../app
-ROOT = APP_DIR.parent                        # repo root
+APP_DIR = Path(__file__).resolve().parent
+ROOT = APP_DIR.parent
 
-# Colours sampled from the logo
 NAVY = "#1B2A4E"
 TEAL = "#12917F"
 TEAL_SOFT = "#E3F3F0"
 BG = "#F4F6FA"
 INK = "#1B2A4E"
-MUTED = "#6B7690"
+MUTED = "#5A6480"
 LINE = "#E2E7F0"
+
+RED = "#D93025"
+AMBER = "#B45309"
+BLUE = "#1A73E8"
+CATEGORY_COLORS = {
+    "claim": RED,
+    "fact": RED,
+    "expired_fact": RED,
+    "expired": RED,
+    "unverified_claim": RED,
+    "tone": AMBER,
+    "terminology": AMBER,
+    "glossary": AMBER,
+    "accessibility": BLUE,
+    "readability": BLUE,
+}
 
 LOGO_CANDIDATES = [
     APP_DIR / "inkwise_logo.jpeg",
@@ -31,60 +45,130 @@ ROLES = ["Creator", "Manager", "Reviewer", "Admin"]
 
 
 def logo_src() -> str:
-    """Return the logo as a data-URI so it can be placed in any HTML block."""
     for p in LOGO_CANDIDATES:
         if p.exists():
             b64 = base64.b64encode(p.read_bytes()).decode()
             return f"data:image/jpeg;base64,{b64}"
-    return ""  # logo missing: pages still render
+    return ""
 
 
 CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-html, body, [class*="css"], .stApp {{ font-family: 'Inter', sans-serif; color: {INK}; }}
-.stApp {{ background: {BG}; }}
+html, body, .stApp {{ color: {INK}; }}
+.stApp {{ background: {BG}; color-scheme: light; }}
 #MainMenu, footer {{ visibility: hidden; }}
 header[data-testid="stHeader"] {{ background: transparent; }}
+[data-testid="stDecoration"], .stDeployButton {{ display: none; }}
 .block-container {{ padding-top: 1.2rem; max-width: 1180px; }}
 
-/* Sidebar */
-[data-testid="stSidebar"] {{ background: {NAVY}; }}
-[data-testid="stSidebar"] * {{ color: #DCE3F2; }}
-[data-testid="stSidebarNav"] a {{ border-radius: 10px; padding: .35rem .6rem; }}
-[data-testid="stSidebarNav"] a:hover {{ background: rgba(255,255,255,.08); }}
+h1, h2, h3, h4, h5 {{ color: {NAVY}; letter-spacing: -.01em; }}
+
+textarea, input,
+[data-baseweb="textarea"] textarea,
+[data-baseweb="input"] input {{
+  background: #fff !important;
+  color: {INK} !important;
+  -webkit-text-fill-color: {INK} !important;
+  caret-color: {INK};
+}}
+[data-baseweb="textarea"], [data-baseweb="input"], [data-baseweb="select"] > div {{
+  background: #fff !important;
+  border-color: {LINE} !important;
+}}
+[data-baseweb="select"] div, [data-baseweb="select"] span {{ color: {INK} !important; }}
+::placeholder {{ color: {MUTED} !important; opacity: 1 !important; -webkit-text-fill-color: {MUTED} !important; }}
+
+[data-testid="stWidgetLabel"] p, label, label p {{ color: {INK} !important; font-weight: 600; }}
+[data-testid="stCaptionContainer"], .stCaption {{ color: {MUTED} !important; }}
+
+[data-testid="stSidebar"] {{ background: #fff; border-right: 1px solid {LINE}; }}
+[data-testid="stSidebar"] p, [data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label {{ color: {INK}; }}
+[data-testid="stSidebarNav"] a {{ border-radius: 8px; padding: .35rem .6rem; }}
+[data-testid="stSidebarNav"] a:hover {{ background: {BG}; }}
 [data-testid="stSidebarNav"] a[aria-current="page"] {{ background: {TEAL}; }}
-[data-testid="stSidebarNav"] a[aria-current="page"] * {{ color: #fff; font-weight: 600; }}
+[data-testid="stSidebarNav"] a[aria-current="page"] * {{ color: #fff !important; font-weight: 600; }}
 .sb-logo img {{ width: 100%; border-radius: 12px; margin-bottom: .6rem; }}
 
-/* Login */
-.iw-login {{ background: {NAVY}; border-radius: 20px; padding: 26px; text-align: center; margin-bottom: 18px; }}
+[data-testid="stSidebarCollapseButton"] button,
+[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarCollapsedControl"] button {{
+  background: {TEAL} !important; color: #fff !important;
+  border-radius: 8px; opacity: 1 !important;
+}}
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stExpandSidebarButton"] svg,
+[data-testid="stSidebarCollapsedControl"] svg {{ fill: #fff !important; color: #fff !important; }}
+
+.iw-login {{ background: {NAVY}; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 18px; }}
 .iw-login img {{ width: min(420px, 100%); border-radius: 12px; }}
 
-/* Components */
-.iw-hero {{ background: {NAVY}; border-radius: 20px; padding: 28px 32px; color: #fff;
-  display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }}
-.iw-hero h1 {{ color:#fff; font-size: 1.7rem; font-weight: 800; margin:0 0 6px; letter-spacing:-.02em; }}
-.iw-hero p {{ color:#B9C4DD; margin:0; max-width: 520px; line-height:1.5; }}
-.iw-hero img {{ height: 64px; border-radius: 14px; }}
-.iw-kpi {{ background:#fff; border:1px solid {LINE}; border-radius:14px; padding:18px 20px; }}
-.iw-kpi .n {{ font-size:2rem; font-weight:800; letter-spacing:-.03em; line-height:1.1; }}
+.iw-kpi {{ background:#fff; border:1px solid {LINE}; border-radius:10px; padding:14px 16px; }}
+.iw-kpi .n {{ font-size:1.8rem; font-weight:700; letter-spacing:-.02em; line-height:1.1; color:{NAVY}; }}
 .iw-kpi .l {{ color:{MUTED}; font-size:.85rem; margin-top:2px; }}
-.iw-kpi.warn .n {{ color:#C2410C; }}
+.iw-kpi.warn .n {{ color:#B45309; }}
 .iw-kpi.ok .n {{ color:{TEAL}; }}
-.iw-card {{ background:#fff; border:1px solid {LINE}; border-left:4px solid {TEAL};
-  border-radius:12px; padding:16px 18px; margin-bottom:6px; }}
-.iw-card h4 {{ margin:0 0 4px; font-size:1.02rem; font-weight:700; }}
+
+.iw-card {{ background:#fff; border:1px solid {LINE}; border-radius:10px;
+  padding:14px 16px; margin-bottom:6px; }}
+.iw-card h4 {{ margin:0 0 4px; font-size:1rem; font-weight:700; color:{NAVY}; }}
 .iw-card p {{ margin:0; color:{MUTED}; font-size:.88rem; line-height:1.45; }}
-.iw-section {{ font-size:1.05rem; font-weight:700; margin: 26px 0 10px; }}
+.iw-section {{ font-size:1.05rem; font-weight:700; margin: 22px 0 8px; color:{NAVY}; }}
+
+.iw-empty {{ border:1px dashed #C5CCDA; border-radius:10px; padding:24px;
+  text-align:center; color:{MUTED}; background:#fff; }}
+
 .iw-banner {{ background:{TEAL_SOFT}; border:1px solid #BFE3DC; color:#0B5E52;
-  border-radius:12px; padding:10px 16px; font-size:.86rem; margin-top:22px; }}
+  border-radius:8px; padding:6px 12px; font-size:.8rem; margin-top:12px; }}
+
 .iw-pill {{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:.75rem; font-weight:600; }}
 .iw-pill.open {{ background:#FFF1E0; color:#B45309; }}
 .iw-pill.ok {{ background:{TEAL_SOFT}; color:#0B5E52; }}
 .iw-pill.bad {{ background:#FDE8E8; color:#B42318; }}
-.stButton>button, [data-testid="stPageLink"] a {{ border-radius:10px; font-weight:600; }}
-.stButton>button[kind="primary"] {{ background:{TEAL}; border:none; }}
+
+.iw-tag {{ display:inline-block; padding:1px 6px; border-radius:4px; font-size:.7rem;
+  font-weight:700; letter-spacing:.03em; border:1px solid {LINE}; color:{MUTED}; background:#fff; }}
+.iw-tag.ai {{ color:{TEAL}; border-color:{TEAL}; }}
+
+.iw-quote {{ background:{BG}; border-left:3px solid #C5CCDA; border-radius:4px;
+  padding:10px 14px; color:{INK}; font-size:.9rem; line-height:1.5; }}
+.iw-quote .src {{ color:{MUTED}; font-size:.78rem; margin-top:4px; }}
+
+.iw-text {{ background:#fff; border:1px solid {LINE}; border-radius:10px;
+  padding:16px 18px; line-height:1.9; color:{INK}; white-space:pre-wrap; }}
+.iw-text mark {{ background:transparent; color:inherit; padding:0 1px;
+  text-decoration-line:underline; text-decoration-style:wavy; text-decoration-thickness:2px;
+  text-underline-offset:3px; }}
+.iw-text sup {{ font-weight:700; font-size:.7rem; margin-left:1px; }}
+
+.stButton>button, [data-testid="stPageLink"] a {{ border-radius:8px; font-weight:600; }}
+.stButton>button[kind="primary"] {{ background:{TEAL}; border:none; color:#fff; }}
+.stButton>button[kind="secondary"] {{ background:#fff; color:{INK}; border:1px solid {LINE}; }}
+
+[data-testid="stAppDeployButton"] {{ display: none !important; }}
+
+[data-baseweb="select"] > div, [data-baseweb="select"] > div > div {{ background: #fff !important; }}
+[data-baseweb="select"] svg {{ fill: {INK} !important; color: {INK} !important; }}
+[data-baseweb="popover"] ul, [data-baseweb="popover"] li, [data-baseweb="menu"] {{
+  background: #fff !important; color: {INK} !important; }}
+
+[data-testid="stBaseButton-secondary"] {{ background: #fff !important; color: {INK} !important;
+  border: 1px solid {LINE} !important; border-radius: 8px; font-weight: 600; }}
+[data-testid="stBaseButton-secondary"] p {{ color: {INK} !important; }}
+[data-testid="stBaseButton-primary"] {{ background: {TEAL} !important; color: #fff !important;
+  border: none !important; border-radius: 8px; font-weight: 600; }}
+[data-testid="stBaseButton-primary"] p {{ color: #fff !important; }}
+
+[data-baseweb="tab"] p {{ color: {INK} !important; font-weight: 600; }}
+[data-baseweb="tab-highlight"] {{ background: {TEAL} !important; }}
+[data-testid="stMetricLabel"] p {{ color: {MUTED} !important; }}
+[data-testid="stMetricValue"] {{ color: {NAVY} !important; }}
+
+[data-baseweb="radio"] > div:first-child {{ border-color: {TEAL} !important; }}
+[data-baseweb="radio"] label p, [data-testid="stRadio"] p {{ color: {INK} !important; }}
+
+[data-testid="stExpander"] summary p {{ color: {INK} !important; font-weight: 600; }}
+[data-testid="stExpander"] {{ background: #fff; border: 1px solid {LINE}; border-radius: 10px; }}
 </style>
 """
 
@@ -94,18 +178,63 @@ def inject_css() -> None:
 
 
 def ai_banner() -> None:
-    """AI Disclosure banner. Reuse on Review / Approvals pages."""
     st.markdown(
         '<div class="iw-banner"><b>AI disclosure:</b> findings are generated with Gemini and '
-        'checked against your brand kit. Every suggestion needs a human decision before it is used.</div>',
+        'checked against your brand kit. A human must approve every suggestion.</div>',
         unsafe_allow_html=True,
     )
 
 
-def not_connected(err) -> None:
-    """Shown when a backend part is missing. err is services.BackendNotConnected."""
+def empty_state(msg: str) -> None:
+    st.markdown(f'<div class="iw-empty">{html.escape(msg)}</div>', unsafe_allow_html=True)
+
+
+def metric_row(items) -> None:
+    cols = st.columns(len(items))
+    for col, (n, label, kind) in zip(cols, items):
+        col.markdown(
+            f'<div class="iw-kpi {kind}"><div class="n">{n}</div><div class="l">{html.escape(label)}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+
+def source_quote(source_text: str, source_id: str, owner: str = "") -> None:
+    owner_part = f" · {html.escape(owner)}" if owner else ""
     st.markdown(
-        f'<div class="iw-card" style="border-left-color:#C2410C">'
+        f'<div class="iw-quote">{html.escape(source_text)}'
+        f'<div class="src">{html.escape(source_id)}{owner_part}</div></div>',
+        unsafe_allow_html=True,
+    )
+    if source_id == "UNVERIFIED":
+        st.warning("No approved source supports this claim.")
+
+
+def checker_tag(checked_by: str) -> str:
+    if checked_by == "ai":
+        return '<span class="iw-tag ai">AI</span>'
+    return '<span class="iw-tag">Rule</span>'
+
+
+def highlight_html(text: str, findings) -> str:
+    out, pos = [], 0
+    for i, f in enumerate(sorted(findings, key=lambda x: x["start"]), 1):
+        if f["start"] < pos:
+            continue
+        color = CATEGORY_COLORS.get(str(f.get("category", "")).lower(), MUTED)
+        out.append(html.escape(text[pos:f["start"]]))
+        out.append(
+            f'<mark style="text-decoration-color:{color};">'
+            f'{html.escape(text[f["start"]:f["end"]])}</mark>'
+            f'<sup style="color:{color}">[{i}]</sup>'
+        )
+        pos = f["end"]
+    out.append(html.escape(text[pos:]))
+    return f'<div class="iw-text">{"".join(out)}</div>'
+
+
+def not_connected(err) -> None:
+    st.markdown(
+        f'<div class="iw-card" style="border-color:#B45309">'
         f'<h4>Backend not connected: {err.part}</h4>'
         f'<p>This screen needs <code>{err.needs}</code>. Owner: {err.owner}. '
         f'It will start working as soon as that is merged into main and you run <code>git pull</code>.</p></div>',
@@ -114,7 +243,6 @@ def not_connected(err) -> None:
 
 
 def login_screen() -> None:
-    """Full-page login. Stops the page until the user signs in."""
     left, mid, right = st.columns([1, 1.6, 1])
     with mid:
         st.markdown(f'<div class="iw-login"><img src="{logo_src()}"/></div>', unsafe_allow_html=True)
@@ -146,7 +274,6 @@ def login_screen() -> None:
 
 
 def render_shell() -> None:
-    """Call at the top of every page: CSS + login check + sidebar."""
     inject_css()
     st.session_state.setdefault("role", "Creator")
     st.session_state.setdefault("user", "Demo user")
