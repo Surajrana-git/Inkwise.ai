@@ -1,197 +1,121 @@
-# INKWISE AI
+# InkWise AI
 
-Brand governance that reviews content **before** it is published. Every finding cites the exact guideline or approved fact behind it, or is marked **UNVERIFIED**. Humans make every decision.
+**Brand governance that checks content before it is published, and shows its evidence.**
 
-Team **DECODIANS** · CodeTitans India 2026 (Inkloom AI hackathon)
+Every finding points to the exact brand guideline, approved fact or glossary term it relates to, or is clearly marked **UNVERIFIED**. InkWise explains each issue, suggests a fix that keeps the writer's intent, and leaves every decision to a human.
 
-| Member | Role |
-|---|---|
-| Suraj Kumar (lead) | Backend |
-| Riyana S | AI / ML |
-| Aashi Yadav | Frontend |
-| Pritha S | Product / Research |
+**Live demo:** https://inkwiseai-jobnp9jkgfoutv5jeuvvs7.streamlit.app/
+
+Team **DECODIANS** · CodeTitans India 2026 (Inkloom AI Hackathon)
+
+| Member | Role | Built |
+|---|---|---|
+| Suraj Kumar (Lead) | Backend | Knowledge base, review workflow and audit log, deployment, reliability |
+| Riyana S | AI / ML | Gemini review engine with citations, rule checks, privacy masking, evaluation |
+| Aashi Yadav | Frontend | Streamlit app: review screen with inline highlights, approvals, history, knowledge base |
+| Pritha S | Product / Research | Lumora brand kit, user testing, documentation |
+
+---
+
+## The problem
+
+Organisations publish content through many employees, agencies and AI tools. Wrong claims, outdated statistics, inconsistent product names and off-brand language slip through, and manual review is slow and inconsistent. Generic tone checkers say *that* something is off, but rarely *why* or *according to which rule*.
+
+## What InkWise does
+
+1. **Review**: a creator pastes content. InkWise checks it against the brand kit: guidelines, facts with owners and expiry dates, and approved terminology.
+2. **Explain**: each issue is highlighted in the text, with the source it relates to, why it matters, a suggested fix and a confidence score. Anything no approved source supports is marked **UNVERIFIED** instead of guessed.
+3. **Decide**: the creator accepts, edits or rejects each finding, then sends the content for approval.
+4. **Approve**: a manager or reviewer approves or requests changes, with a comment. Nobody can approve their own content.
+5. **Track**: every version, decision and approval is saved in an audit log. Reviewer decisions are recorded per guideline, the base for spotting unclear guidelines (Round 3).
+
+### What makes it different
+- **No source, no claim:** findings cite their source; unsupported claims are marked UNVERIFIED.
+- **Fact freshness:** approved facts expire, so outdated numbers ("2 million users") are caught, even when reworded ("2M").
+- **Rules + AI:** exact checks (banned terms, expired facts, readability) are deterministic; judgement calls (claims, tone, messaging, accessibility) go to Gemini.
+- **Privacy first:** names, phone numbers, emails and ID numbers are masked before any text is sent to an AI service.
+- **Reliable:** if a Gemini model is overloaded, InkWise switches to a backup model. If AI is unavailable, the user still gets rule checks and a clear warning.
+
+## Try the demo
+
+Open the live link. In the sidebar, type any name and pick a role (there is no password in the demo):
+
+| Name | Role | Try this |
+|---|---|---|
+| `asha` | Creator | Review → paste the sample below → accept or edit findings → **Send for approval** |
+| `meera` | Manager | Approvals → approve or reject with a comment → History |
+
+Use two different names: the creator cannot approve their own content.
+
+**Sample text:**
+> Join 2 million happy users of LumoraPay! We are India's fastest payment app and every transfer arrives instantly. Tap the green button above to sign up now or miss your chance.
+
+Expected: expired fact (F01), banned product name (T01), unsupported claims (G07), colour-only instruction (G15), pushy tone (G03).
+
+All demo data is synthetic: **Lumora** is a fictional fintech brand created by the team.
+
+## Screenshots
+
+*To be added in `docs/screenshots/`: Home, Review with highlights, expanded finding, Approvals, History.*
+
+## Evaluation
+
+We measure InkWise on a labelled test set of 100 samples (25 clean, 75 with 1–3 planted errors), where every label is tied to a real brand-kit ID. See [eval/README.md](eval/README.md).
+
+| Setup | Precision | Recall | Citation accuracy | Clean samples wrongly flagged |
+|---|---:|---:|---:|---:|
+| Rules only (no AI) | 96.1% | 51.0% | 97.3% | 1 / 25 |
+| Rules + AI | *pending: `eval/results.md`* | | | |
+
+Rules alone catch terminology (50/50) and expired facts (23/26). The AI review adds claims, tone, accessibility and messaging.
+
+Run it yourself: `python eval/run_eval.py --split test` (add `--rules-only` for the baseline).
+
+## Architecture
+
+A pure Python engine (`engine/`) with a Streamlit UI (`app/`) on top. Full design, key decisions and limitations: [docs/architecture.md](docs/architecture.md).
+
+```text
+engine/
+  schemas.py     data contracts: Finding, Guideline, Fact, Term, ReviewResult
+  knowledge.py   brand kit loading and search (ChromaDB + Gemini embeddings, keyword fallback)
+  redact.py      masks personal data before any API call
+  rules.py       banned terms, expired facts, readability
+  review.py      Gemini review with citations, backup models, validation
+  workflow.py    roles, versions, decisions, approvals, audit log (SQLite)
+app/             Streamlit pages: Home, Review, Approvals, History, Knowledge Base
+data/brand_kit/  Lumora guidelines, facts and glossary (synthetic)
+eval/            labelled dev/test sets and evaluation script
+docs/            architecture, deployment, disclosures, user testing
+tests/           55 automated tests
+```
 
 ## Run locally
 
 ```bash
-python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env                                  # add your Gemini API key
-streamlit run app/Home.py
-pytest                                                # run tests
-```
-
-## Layout
-
-```
-engine/   pure Python review engine (no UI)
-  schemas.py    shared data contracts (Finding, Guideline, Fact, Term)
-  knowledge.py  brand kit loading + ChromaDB search
-  review.py     Gemini review with citations
-  rules.py      glossary, expired-fact and readability checks
-  redact.py     masks personal data before any API call
-  workflow.py   roles, approvals, versions, audit log (SQLite)
-app/      Streamlit UI
-data/brand_kit/  synthetic demo brand "Lumora"
-eval/     labelled test set + evaluation script
-docs/     architecture, disclosures, user testing
-```
-
-## Three improvements (named in Round 2, delivered in Round 3)
-1. **Evidence-grounded findings**: every flag cites its source or is marked UNVERIFIED; measured by citation accuracy.
-2. **Fact freshness**: approved facts have owners and expiry dates, so outdated claims are caught.
-3. **Guideline Clarity Insights**: reviewer overrides and disagreements show which guidelines are unclear and which mistakes repeat.
-
-## Disclosures
-See [docs/disclosures.md](docs/disclosures.md).
-...................................................................................................................................................................
-
-# INKWISE AI
-
-Brand governance that reviews content **before** it is published. Every finding cites the exact guideline or approved fact behind it, or is marked **UNVERIFIED**. Humans make every decision.
-
-**Team DECODIANS** · CodeTitans India 2026 (Inkloom AI Hackathon)
-
-## Team Members
-
-| Member | Role |
-|---|---|
-| Suraj Kumar (Lead) | Backend |
-| Riyana S | AI / ML |
-| Aashi Yadav | Frontend |
-| Pritha S | Product / Research |
-
-## Project Problem
-
-Brands need to ensure that their marketing content follows brand guidelines before publishing. Manual checking takes time and may miss incorrect claims, outdated facts, and inconsistent brand messaging.
-
-InkWise AI addresses this problem by reviewing content using AI and rule-based checks. It identifies potential issues and provides supporting evidence from brand guidelines or approved facts.
-
-## Live Application Link
-
-**Live Demo:** [Open InkWise AI](https://inkwiseai-jobnp9jkgfoutv5jeuvvs7.streamlit.app/)
-
-## Demo Login Credentials
-
-| Username | Role |
-|---|---|
-| `asha` | Creator |
-| `meera` | Manager |
-
-Select the appropriate demo user and role in the application.
-
-## How InkWise AI Works
-
-1. **Content Submission:** Creator enters marketing content into the application.
-2. **Content Review:** AI and rule-based checks analyze the submitted content.
-3. **Finding Generation:** The system identifies potential brand guideline violations and displays supporting evidence.
-4. **Finding Management:** Creator can accept, edit, or reject individual findings.
-5. **Approval Request:** Reviewed content is sent to the Manager for approval.
-6. **Manager Review:** Manager approves or rejects the submission with comments.
-7. **History and Audit:** Review activities, decisions, and versions are recorded for tracking.
-
-## Run Locally
-
-```bash
 python -m venv .venv
-
-# Activate virtual environment
-# Windows:
-.venv\Scripts\activate
-
-# macOS / Linux:
-source .venv/bin/activate
-
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-# Create environment file and add your Gemini API key
-cp .env.example .env
-
-# Run application
+cp .env.example .env                 # add GEMINI_API_KEY (optional: rule checks work without it)
 streamlit run app/Home.py
-
-# Run tests
-pytest
+pytest                               # 55 tests
 ```
 
-## Project Layout
+## Three improvements for Round 3
 
-```text
-engine/             Pure Python review engine (no UI)
-  schemas.py        Shared data contracts (Finding, Guideline, Fact, Term)
-  knowledge.py      Brand kit loading and ChromaDB search
-  review.py         Gemini review with citations
-  rules.py          Glossary, expired-fact and readability checks
-  redact.py         Masks personal data before API calls
-  workflow.py       Roles, approvals, versions and SQLite audit log
+1. **Evidence-grounded findings:** every finding cites its source or is marked UNVERIFIED; measured by citation accuracy.
+2. **Fact freshness:** approved facts with owners and expiry dates; outdated claims are caught and the owner is named.
+3. **Guideline Clarity Insights:** reviewer accept, edit and reject decisions show which guidelines are unclear and which mistakes repeat.
 
-app/                Streamlit user interface
-data/brand_kit/     Synthetic demo brand "Lumora"
-eval/               Labelled evaluation dataset and evaluation script
-docs/               Architecture, disclosures and user testing
-```
+## Roadmap
 
-## Application Screenshots
+- **Round 3:** the three improvements above, plus a **Visual Brand Inspector** (brand-colour and contrast checks on images, logo presence) and PDF/DOCX upload.
+- **After the event:** voice input, CMS and Slack integrations, a managed database for production.
 
-Add the following screenshots of the live application:
+## User testing
 
-1. Home Dashboard
-2. Review Page with Findings
-3. Expanded Finding with Evidence
-4. Approvals Page
-5. History Page
+Five review-and-approval workflows on the live app: [docs/docs/user_testing.md](docs/docs/user_testing.md).
 
-## Evaluation Results
+## Responsible design and disclosures
 
-InkWise AI is evaluated using a labelled development and test dataset.
-
-### Rules-only Baseline
-
-| Metric | Result |
-|---|---:|
-| Precision | 96.1% |
-| Recall | 51.0% |
-| Citation Accuracy | 97.3% |
-
-### Rules + AI Evaluation
-
-Add the final evaluation results from `eval/results.md` after the evaluation is completed.
-
-Include a comparison of:
-- Rules-only baseline
-- Rules + AI system
-
-**Note:** The baseline values above are not the final Rules + AI results.
-
-## Three Improvements
-
-The following improvements were identified in Round 2 for delivery in Round 3:
-
-1. **Evidence-grounded findings:** Every finding cites its supporting guideline or approved fact, or is marked UNVERIFIED. Measured using citation accuracy.
-
-2. **Fact freshness:** Approved facts include owners and expiry dates so that outdated claims can be identified.
-
-3. **Guideline Clarity Insights:** Reviewer overrides and disagreements help identify unclear guidelines and repeated mistakes.
-
-## Future Roadmap
-
-- **Visual Brand Inspector:** Extend content review to images and visual brand consistency.
-- **Voice Input:** Allow users to submit content through voice input.
-- **Improved Fact Freshness:** Strengthen monitoring of outdated and expired approved facts.
-- **Guideline Insights:** Improve the identification of unclear guidelines and recurring review issues.
-
-## Disclosures
-
-For information about AI models, APIs, datasets, libraries, privacy practices, and AI-assisted development, see [docs/disclosures.md](docs/disclosures.md).
-
-## User Testing
-
-User testing details, feedback, identified issues, and improvements are documented in [docs/user_testing.md](docs/user_testing.md).
-
-## Documentation
-
-- [Architecture](docs/architecture.md)
-- [Disclosures](docs/disclosures.md)
-- [User Testing](docs/user_testing.md)
-- [Evaluation Results](eval/results.md)
-
+Synthetic data only; personal data masked before AI calls; AI use disclosed in the app; humans approve every change; every action logged. APIs, models, datasets, libraries and AI-assisted development: [docs/disclosures.md](docs/disclosures.md).
