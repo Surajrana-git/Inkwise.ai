@@ -1,0 +1,74 @@
+PROMPT = """
+Generate test data for a brand-review tool for the fictional brand Lumora.
+Each row: prompt = "Write a Lumora marketing text with planted errors".
+completion = ONE JSON object with fields:
+id, format (social|email|web|ad|push), text, is_clean, errors [ {type, exact_span, rule_or_fact_id} ].
+
+Rules:
+- Each text is 1 to 4 sentences. Mix social posts, emails, web copy, ads and push messages.
+- Use different topics and different wording in every row.
+- About 80% of rows have 1 to 3 planted errors. About 20% are clean (is_clean true, errors []).
+- type is one of: terminology, outdated_fact, tone, claim, messaging, accessibility.
+- exact_span must be copied exactly from text.
+- rule_or_fact_id must be an ID from the brand kit below. Use UNVERIFIED for a claim no fact supports.
+- terminology errors: use a banned variant of a term. rule_or_fact_id is the T ID.
+- outdated_fact errors: repeat a fact whose expiry date is before 2026-11-09. rule_or_fact_id is the F ID.
+- tone and messaging errors: break a guideline. rule_or_fact_id is the G ID.
+- Synthetic data only. No real names, emails or phone numbers.
+
+GUIDELINES:
+G01 [tone] Friendly, plain tone: Write like a helpful friend. Use familiar words and avoid jargon or hype.
+G02 [tone] Be clear and concise: Put the main point first. Keep sentences short and remove words that do not help the reader.
+G03 [tone] Sound confident, not pushy: Explain what Lumora can do without pressuring people or promising an outcome.
+G04 [terminology] Use approved product names: Use product names exactly as listed in the glossary, including spaces and capitalization.
+G05 [terminology] Explain financial terms: When a financial term may be unfamiliar, define it in everyday language the first time it appears.
+G06 [terminology] Keep feature names consistent: Use the approved name for each feature. Do not invent abbreviations or alternate labels.
+G07 [claim] Substantiate product claims: Make factual claims only when supported by a current approved source in the brand kit.
+G08 [claim] Avoid guarantees: Never guarantee earnings, savings, approval, or uninterrupted service.
+G09 [claim] State fees accurately: Describe fees only with current approved details, and make any conditions easy to notice.
+G10 [outdated_fact] Check facts before reuse: Do not reuse a dated statistic or time-sensitive statement after its source has expired; request a current source.
+G11 [outdated_fact] Use current availability details: Check current country, currency, and platform availability before describing who can use a feature.
+G12 [messaging] Lead with customer value: Explain how a feature helps the customer before describing internal technology or company priorities.
+G13 [messaging] Be transparent about next steps: Tell customers what will happen next and what action, if any, they need to take.
+G14 [accessibility] Write for everyone: Use respectful, inclusive language. Do not assume a reader's identity, income, or financial experience.
+G15 [accessibility] Make instructions accessible: Do not rely on color, position, or an image alone to communicate an instruction or status.
+
+FACTS:
+F01 (expires 2026-09-30): Lumora Pay has 2 million registered users.
+F02 (expires 2026-08-31): Lumora Pay supports transfers in 12 currencies.
+F03 (expires 2026-07-31): The Lumora app has a 4.8 out of 5 average rating.
+F04 (expires 2026-06-30): Lumora customers made 5 million transfers in Q1 2026.
+F05 (expires 2026-09-01): Spend Insights launched for eligible Lumora Pay customers in March 2026.
+F06 (expires 2026-10-01): Lumora support is available seven days a week.
+F07 (expires 2026-08-15): Lumora Pay is available in 8 markets.
+F08 (expires 2026-07-15): Lumora's average onboarding time was under 6 minutes in Q1 2026.
+F09 (expires None): Lumora Pay lets customers review transfer details before confirming.
+F10 (expires 2027-04-30): Customers can turn on transaction notifications in app settings.
+F11 (expires None): Spend Insights groups eligible transactions by spending category.
+F12 (expires 2027-03-31): Customers can download a monthly activity statement from the app.
+F13 (expires None): Lumora uses a confirmation step before a customer submits a transfer.
+F14 (expires 2027-02-28): Lumora support can help customers find the in-app dispute form.
+F15 (expires 2027-01-31): Customers can set a monthly spending target in Spend Insights.
+F16 (expires 2027-03-31): Lumora Pay supports biometric sign-in on compatible devices.
+F17 (expires 2027-04-30): Transfer availability and timing can depend on the destination and payment method.
+F18 (expires 2027-04-30): Customers can update their contact details in profile settings.
+F19 (expires None): Lumora provides an in-app view of recent account activity.
+F20 (expires 2027-04-30): Customers can review any displayed fee before confirming a transfer.
+
+TERMS:
+T01 approved 'Lumora Pay', banned: 'LumoraPay', 'Lumora pay', 'LPay'
+T02 approved 'Spend Insights', banned: 'SpendInsight', 'Spending Insights', 'SI'
+T03 approved 'Lumora app', banned: 'Lumora App', 'the Lumora application', 'L-app'
+T04 approved 'transfer', banned: 'money push', 'wire action'
+T05 approved 'scheduled payment', banned: 'auto debit', 'standing instruction'
+T06 approved 'transaction notification', banned: 'txn alert', 'transaction ping'
+T07 approved 'monthly spending target', banned: 'monthly budget cap', 'spend limit'
+T08 approved 'account activity', banned: 'account feed', 'money timeline'
+T09 approved 'in-app support', banned: 'app helpdesk', 'Lumora hotline'
+T10 approved 'spending category', banned: 'spend bucket', 'expense class'
+T11 approved 'profile settings', banned: 'user console', 'account control panel'
+T12 approved 'confirmation step', banned: 'finalize gate', 'submit checkpoint'
+T13 approved 'transfer estimate', banned: 'instant arrival promise', 'delivery guarantee'
+T14 approved 'monthly activity statement', banned: 'monthly ledger', 'account dossier'
+T15 approved 'eligible customer', banned: 'approved user', 'pre-qualified member'
+"""
