@@ -23,7 +23,10 @@ from engine.schemas import UNVERIFIED, Category, CheckedBy, Finding, ReviewResul
 log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gemini-flash-latest"
-MAX_TRIES = 3          # S2: worst case ~1 minute, not ~5
+# Tried in order when a model is overloaded (503) or rate-limited (429).
+FALLBACK_MODELS = ("gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
+MAX_TRIES = 3          # kept for compatibility; see TOTAL_BUDGET_S
+TOTAL_BUDGET_S = 45.0  # stop trying models after this many seconds in total
 TIMEOUT_MS = 20_000  # give up on one Gemini call after 20 seconds
 MAX_AI_FINDINGS = 10
 UNVERIFIED_MAX_CONFIDENCE = 0.6
@@ -68,32 +71,53 @@ def _model_name() -> str:
     return os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
 
 
+def _models() -> list[str]:
+    """Primary model first, then backups (GEMINI_FALLBACK_MODELS, comma-separated, overrides)."""
+    extra = os.getenv("GEMINI_FALLBACK_MODELS")
+    backups = [m.strip() for m in extra.split(",")] if extra else list(FALLBACK_MODELS)
+    out: list[str] = []
+    for m in [_model_name(), *backups]:
+        if m and m not in out:
+            out.append(m)
+    return out
+
+
 def _retryable(e: Exception) -> bool:
     s = str(e)
-    return any(x in s for x in ("429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE"))
+    return any(x in s for x in ("429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE", "500", "INTERNAL"))
+
+
+_last_model = ""  # model that answered the most recent call (for disclosure)
 
 
 def _gemini_generate(prompt: str) -> str:
+    """Call Gemini. If a model is busy, retry it once, then move to the next backup model."""
+    global _last_model
     from google import genai
     from google.genai import types
 
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"],
                           http_options=types.HttpOptions(timeout=TIMEOUT_MS))
-    delay = 4.0
-    for attempt in range(MAX_TRIES):
-        try:
-            resp = client.models.generate_content(
-                model=_model_name(), contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2))
-            return resp.text or ""
-        except Exception as e:  # retry only rate-limit / overload errors
-            if attempt < MAX_TRIES - 1 and _retryable(e):
-                log.warning("Gemini busy (%s). Retrying in %.0fs", type(e).__name__, delay)
-                _sleep(delay)
-                delay *= 2
-                continue
-            raise
-    return ""
+    last_error: Exception | None = None
+    start = time.monotonic()
+    for model in _models():
+        for attempt in range(2):
+            if time.monotonic() - start > TOTAL_BUDGET_S:
+                raise last_error or TimeoutError("Gemini did not answer in time")
+            try:
+                resp = client.models.generate_content(
+                    model=model, contents=prompt,
+                    config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2))
+                _last_model = model
+                return resp.text or ""
+            except Exception as e:
+                if not _retryable(e):
+                    raise
+                last_error = e
+                log.warning("Gemini %s busy (%s), attempt %d", model, type(e).__name__, attempt + 1)
+                if attempt == 0:
+                    _sleep(2.0)
+    raise last_error or RuntimeError("No Gemini model available")
 
 
 def _parse(raw: str) -> list[dict]:
@@ -193,7 +217,7 @@ def review_text(text: str, kb: Optional[knowledge.KnowledgeBase] = None,
     if use_ai and generate and text.strip():
         try:
             ai_f = _ai_findings(text, safe, mapping, kb, generate)
-            model = _model_name() if llm is None else "injected-llm"
+            model = (_last_model or _model_name()) if llm is None else "injected-llm"
         except Exception as e:  # never crash the app because Gemini is down
             log.warning("AI review failed, returning rule findings only: %s", e)
             ai_error = f"AI review unavailable ({type(e).__name__}). Showing rule checks only."  # S3
