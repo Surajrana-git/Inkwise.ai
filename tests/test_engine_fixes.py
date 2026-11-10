@@ -13,8 +13,39 @@ def kb():
 
 
 def test_s2_retry_budget_is_about_a_minute():
-    worst = sum(4 * 2 ** i for i in range(review.MAX_TRIES - 1)) + review.MAX_TRIES * review.TIMEOUT_MS / 1000
-    assert worst <= 75
+    assert review.TOTAL_BUDGET_S + review.TIMEOUT_MS / 1000 <= 75
+
+
+def test_busy_model_falls_back_to_next(monkeypatch):
+    """503 'high demand' on the main model -> the next model answers."""
+    import sys, types
+    calls = []
+
+    class Models:
+        def generate_content(self, model, contents, config):
+            calls.append(model)
+            if model == "busy-model":
+                raise RuntimeError("503 UNAVAILABLE. This model is currently experiencing high demand.")
+            return types.SimpleNamespace(text="[]")
+
+    class Client:
+        def __init__(self, **kw):
+            self.models = Models()
+
+    fake_types = types.SimpleNamespace(HttpOptions=lambda **kw: None,
+                                       GenerateContentConfig=lambda **kw: None)
+    genai = types.SimpleNamespace(Client=Client, types=fake_types)
+    monkeypatch.setitem(sys.modules, "google.genai", genai)
+    monkeypatch.setitem(sys.modules, "google.genai.types", fake_types)
+    import google
+    monkeypatch.setattr(google, "genai", genai, raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "test")
+    monkeypatch.setenv("GEMINI_MODEL", "busy-model")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "backup-model")
+    monkeypatch.setattr(review, "_sleep", lambda s: None)
+    assert review._gemini_generate("x") == "[]"
+    assert calls == ["busy-model", "busy-model", "backup-model"]
+    assert review._last_model == "backup-model"
 
 
 def test_s3_ai_error_when_gemini_fails(kb):
