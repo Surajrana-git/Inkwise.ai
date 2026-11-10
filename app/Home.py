@@ -70,9 +70,9 @@ st.caption(f"{user} · {role}")
 
 c1, c2, _ = st.columns([1.2, 1.2, 4])
 with c1:
-    st.page_link(PAGE_REVIEW, label="Start a review", use_container_width=True)
+    st.page_link(PAGE_REVIEW, label="Start a review", width="stretch")
 with c2:
-    st.page_link(PAGE_APPROVALS, label="Open approvals", use_container_width=True)
+    st.page_link(PAGE_APPROVALS, label="Open approvals", width="stretch")
 
 wf_error = None
 stats = {}
@@ -92,10 +92,10 @@ except services.BackendNotConnected as e:
 
 dash = "–"
 theme.metric_row([
-    (stats.get("reviews_today", dash), "Reviews today", ""),
-    (stats.get("open_findings", dash), "Open findings", ""),
-    (stats.get("pending_approvals", dash), "Waiting for approval", "warn"),
-    (stats.get("expired_facts", dash), "Expired facts flagged", "warn"),
+    (stats.get("reviews_today", dash), "Reviews", ""),
+    (stats.get("open_findings", dash), "Open", ""),
+    (stats.get("pending_approvals", dash), "Waiting", "warn"),
+    (stats.get("expired_facts", dash), "Expired", "warn"),
 ])
 
 st.markdown('<div class="iw-section">Waiting for you</div>', unsafe_allow_html=True)
