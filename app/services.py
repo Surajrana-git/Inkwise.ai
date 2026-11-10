@@ -1,16 +1,14 @@
-"""Bridge between the Streamlit UI and the backend. NO mock data lives here.
-If a backend part is missing, the function raises BackendNotConnected and the page
-shows which file is needed."""
 import datetime as dt
 import importlib
 import importlib.util
 import json
 import sys
+from enum import Enum
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))          # lets us import `engine`
+    sys.path.append(str(ROOT))
 
 KIT = ROOT / "data" / "brand_kit"
 KIT_FILES = ["guidelines.json", "facts.json", "glossary.json"]
@@ -18,7 +16,6 @@ KIT_FILES = ["guidelines.json", "facts.json", "glossary.json"]
 WORKFLOW_FUNCS = ["submit_for_approval", "list_submissions", "decide_submission",
                   "get_recent_activity", "get_dashboard_stats"]
 
-# part -> (display name, what is needed, owner)
 _PARTS = {
     "review": ("AI review engine", "engine/review.py with review_text(text)", "Riyana, Steps 4 and 8"),
     "workflow": ("Workflow and approvals", "engine/workflow.py", "Suraj, Step 6"),
@@ -48,7 +45,6 @@ def _module(part: str, modname: str, funcs: list[str]):
 
 
 def check(part: str) -> None:
-    """Raise BackendNotConnected if `part` ('review' | 'workflow' | 'knowledge') is not ready."""
     if part == "review":
         _module("review", "engine.review", ["review_text"])
     elif part == "workflow":
@@ -71,34 +67,70 @@ def backend_status() -> dict:
     return out
 
 
+def _plain(value):
+    if isinstance(value, Enum):
+        return _plain(value.value)
+    if isinstance(value, dict):
+        return {k: _plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_plain(v) for v in value]
+    return value
+
+
+def _clean_label(value, default: str) -> str:
+    if value is None or value == "":
+        return default
+    text = str(_plain(value))
+    return text.split(".")[-1].strip().lower() if text.startswith(("FindingStatus.", "Category.", "CheckedBy.")) else text.strip().lower()
+
+
 def _to_dict(f) -> dict:
-    """A Finding may come back as a dict, pydantic model or dataclass."""
     if isinstance(f, dict):
         d = dict(f)
     elif hasattr(f, "model_dump"):
-        d = f.model_dump()
+        d = f.model_dump(mode="json")
     elif hasattr(f, "dict"):
         d = f.dict()
     else:
         d = dict(vars(f))
-    d.setdefault("status", "open")
-    d.setdefault("source_text", "")
-    d.setdefault("why", "")
-    d.setdefault("suggested_fix", "")
-    d.setdefault("confidence", 0.0)
-    d.setdefault("checked_by", "ai")
+    d = _plain(d)
+    d["status"] = _clean_label(d.get("status"), "open")
+    d["category"] = _clean_label(d.get("category"), "")
+    d["checked_by"] = _clean_label(d.get("checked_by"), "rule")
+    d["source_text"] = d.get("source_text") or ""
+    d["source_id"] = d.get("source_id") or "UNVERIFIED"
+    d["owner"] = d.get("owner") or ""
+    d["why"] = d.get("why") or ""
+    d["suggested_fix"] = d.get("suggested_fix") or ""
+    d["span_text"] = d.get("span_text") or d.get("span") or ""
+    try:
+        d["confidence"] = float(d.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        d["confidence"] = 0.0
     return d
 
 
-# ---------------------------------------------------------------- REVIEW (engine/review.py)
-def review_text(text: str) -> list[dict]:
+def review_text_full(text: str) -> dict:
     mod = _module("review", "engine.review", ["review_text"])
     result = mod.review_text(text)
-    # engine returns a ReviewResult; fall back to a plain list if it ever does
-    return [_to_dict(f) for f in getattr(result, "findings", result)]
+    raw = getattr(result, "findings", None)
+    if raw is None and isinstance(result, dict):
+        raw = result.get("findings", [])
+    if raw is None:
+        raw = result
+    if isinstance(result, dict):
+        ai_error = result.get("ai_error")
+    else:
+        ai_error = getattr(result, "ai_error", None)
+    findings = [_to_dict(f) for f in raw]
+    findings.sort(key=lambda x: (x.get("start") is None, x.get("start") or 0))
+    return {"findings": findings, "ai_error": ai_error or None}
 
 
-# ---------------------------------------------------------------- WORKFLOW (engine/workflow.py)
+def review_text(text: str) -> list[dict]:
+    return review_text_full(text)["findings"]
+
+
 def _wf():
     return _module("workflow", "engine.workflow", WORKFLOW_FUNCS)
 
@@ -108,7 +140,7 @@ def submit_for_approval(title: str, text: str, findings: list[dict], author: str
 
 
 def list_submissions(status: str | None = None) -> list[dict]:
-    return _wf().list_submissions(status)
+    return [_plain(s) for s in _wf().list_submissions(status)]
 
 
 def decide_submission(sub_id: str, decision: str, comment: str, user: str, role: str) -> None:
@@ -116,23 +148,21 @@ def decide_submission(sub_id: str, decision: str, comment: str, user: str, role:
 
 
 def get_recent_activity(limit: int = 5) -> list[dict]:
-    return _wf().get_recent_activity(limit)
+    return [_plain(a) for a in _wf().get_recent_activity(limit)]
 
 
 def get_dashboard_stats(role: str) -> dict:
-    return _wf().get_dashboard_stats(role)
+    return _plain(_wf().get_dashboard_stats(role))
 
 
-# ---------------------------------------------------------------- KNOWLEDGE BASE (data/brand_kit)
 def _records(path: Path) -> list[dict]:
     data = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(data, dict):                      # {"guidelines": [...]} style
+    if isinstance(data, dict):
         data = next((v for v in data.values() if isinstance(v, list)), [])
     return data
 
 
 def _join(value) -> str:
-    """banned_variants is a list; the UI wants one string."""
     if isinstance(value, (list, tuple)):
         return ", ".join(str(v) for v in value)
     return str(value or "")
@@ -154,8 +184,11 @@ def get_knowledge_base() -> dict:
 
     facts = []
     for x in f:
-        exp = x.get("expires_on")          # may be null = never expires
-        expired = bool(exp) and dt.date.fromisoformat(str(exp)[:10]) < today
+        exp = x.get("expires_on")
+        try:
+            expired = bool(exp) and dt.date.fromisoformat(str(exp)[:10]) < today
+        except ValueError:
+            expired = False
         facts.append({"id": x.get("id"),
                       "text": x.get("statement", ""),
                       "source": x.get("source", ""),
@@ -171,6 +204,5 @@ def get_knowledge_base() -> dict:
 
 
 def authenticate(username: str, password: str, role: str) -> dict | None:
-    """Returns {"user": ..., "role": ...} on success, or None for wrong details."""
     mod = _module("workflow", "engine.workflow", ["authenticate"])
     return mod.authenticate(username, password, role)
