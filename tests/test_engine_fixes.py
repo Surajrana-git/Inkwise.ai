@@ -26,6 +26,8 @@ def test_busy_model_falls_back_to_next(monkeypatch):
             calls.append(model)
             if model == "busy-model":
                 raise RuntimeError("503 UNAVAILABLE. This model is currently experiencing high demand.")
+            if model == "missing-model":
+                raise RuntimeError("404 NOT_FOUND. models/missing-model is not found.")
             return types.SimpleNamespace(text="[]")
 
     class Client:
@@ -41,10 +43,10 @@ def test_busy_model_falls_back_to_next(monkeypatch):
     monkeypatch.setattr(google, "genai", genai, raising=False)
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setenv("GEMINI_MODEL", "busy-model")
-    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "backup-model")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "missing-model,backup-model")
     monkeypatch.setattr(review, "_sleep", lambda s: None)
     assert review._gemini_generate("x") == "[]"
-    assert calls == ["busy-model", "busy-model", "backup-model"]
+    assert calls == ["busy-model", "busy-model", "missing-model", "backup-model"]
     assert review._last_model == "backup-model"
 
 
