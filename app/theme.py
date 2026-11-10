@@ -103,9 +103,10 @@ textarea, input,
 .iw-login {{ background: {NAVY}; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 18px; }}
 .iw-login img {{ width: min(420px, 100%); border-radius: 12px; }}
 
-.iw-kpi {{ background:#fff; border:1px solid {LINE}; border-radius:10px; padding:14px 16px; }}
+.iw-kpi {{ background:#fff; border:1px solid {LINE}; border-radius:10px; padding:12px 14px; min-width:0; }}
 .iw-kpi .n {{ font-size:1.8rem; font-weight:700; letter-spacing:-.02em; line-height:1.1; color:{NAVY}; }}
-.iw-kpi .l {{ color:{MUTED}; font-size:.85rem; margin-top:2px; }}
+.iw-kpi .l {{ color:{MUTED}; font-size:.85rem; margin-top:2px; 
+   white space:nowrap; overflow:hidden; text-overflow:ellipsis; word-break:normal; }}
 .iw-kpi.warn .n {{ color:#B45309; }}
 .iw-kpi.ok .n {{ color:{TEAL}; }}
 
@@ -251,7 +252,7 @@ def login_screen() -> None:
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
             role = st.selectbox("Role", ROLES)
-            submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+            submitted = st.form_submit_button("Sign in", type="primary", width="stretch")
         if submitted:
             if not username.strip() or not password:
                 st.warning("Enter your username and password.")
@@ -288,7 +289,7 @@ def render_shell() -> None:
         if REQUIRE_LOGIN:
             st.caption("Signed in as")
             st.markdown(f"**{st.session_state.user}** · {st.session_state.role}")
-            if st.button("Sign out", use_container_width=True):
+            if st.button("Sign out", width="stretch"):
                 for key in ("auth", "user", "role"):
                     st.session_state.pop(key, None)
                 st.rerun()
