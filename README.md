@@ -44,3 +44,64 @@ docs/     architecture, disclosures, user testing
 
 ## Disclosures
 See [docs/disclosures.md](docs/disclosures.md).
+...................................................................................................................................................................
+
+# InkWise AI – Disclosures
+
+This document describes the external APIs, AI models, datasets, libraries, and AI-assisted development tools used in the InkWise AI project.
+
+## 1. APIs and AI Models
+
+- **Google Gemini API:** Used for AI-powered content review and identifying brand guideline violations.
+- **Gemini 3.5 Flash Lite:** Used as the primary AI model for content analysis.
+- **Backup Gemini Flash Models:** Used as fallback models when the primary model is unavailable.
+- **Gemini Embeddings:** Used to convert brand guidelines and approved facts into vector representations for semantic search.
+
+**API Usage:** The project uses the Google Gemini API free tier.
+
+**Data Privacy:** Only synthetic demo data is used in the project. Personal information is masked before API calls.
+
+## 2. Datasets
+
+- **Lumora Brand Kit:** A synthetic brand guideline dataset created by the project team.
+- **Evaluation Dataset:** Test and development datasets generated using `eval/build_dataset.py`.
+- **Initial Datasets:** The first datasets were generated with Adaption Labs and stored in `eval/raw/`. These initial datasets were not used for evaluation scoring.
+
+The project uses synthetic data and does not depend on real customer or confidential company information.
+
+## 3. Libraries and Frameworks
+
+The following libraries and frameworks are used:
+
+| Library | Purpose |
+|---|---|
+| Streamlit | Web application interface |
+| Pydantic | Data validation and schemas |
+| google-genai | Gemini API integration |
+| ChromaDB | Vector database and semantic search |
+| textstat | Readability analysis |
+| PyMuPDF | PDF document processing |
+| python-docx | Word document processing |
+| Plotly | Data visualization |
+| pytest | Testing |
+
+## 4. AI-Assisted Development
+
+The following AI tools supported project development:
+
+- **Google Antigravity:** Assisted with code generation, development, and debugging.
+- **Claude:** Assisted with code review, problem-solving, and documentation.
+
+All team members reviewed the generated code and documentation and are responsible for understanding and explaining their contributions.
+
+## 5. Data Privacy and Security
+
+- Synthetic demo data is used for testing and demonstration.
+- Personal information is masked before sending content to external AI APIs.
+- API keys are stored in environment variables and are not included in the source code.
+- Human reviewers make all final approval and rejection decisions.
+
+## 6. Transparency
+
+InkWise AI aims to provide transparent and evidence-based brand governance. Findings cite the relevant guideline or approved fact. If sufficient supporting evidence is unavailable, the finding is marked **UNVERIFIED**.
+
