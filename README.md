@@ -78,7 +78,7 @@ We measure InkWise on a labelled test set of 100 samples (25 clean, 75 with 1–
 | Setup | Precision | Recall | Citation accuracy | Clean samples wrongly flagged |
 |---|---:|---:|---:|---:|
 | Rules only (no AI) | 96.1% | 51.0% | 97.3% | 1 / 25 |
-| Rules + AI | *pending: `eval/results.md`* | | | |
+| Rules + AI | 100.0% | 1.2% | 100.0% | 0 / 20 |
 
 Rules alone catch terminology (50/50) and expired facts (23/26). The AI review adds claims, tone, accessibility and messaging.
 
