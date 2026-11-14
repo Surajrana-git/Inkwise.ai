@@ -1,0 +1,173 @@
+{
+ "fd6775c872bc526f42414ec7040e9cbdd93fe3914f662b0b15dec5d8721087a5": {
+  "sample_id": "launch",
+  "model": "gemini-3.5-flash-lite",
+  "generated_at": "2026-11-14T16:18:55+00:00",
+  "findings": [
+   {
+    "id": "f-001",
+    "category": "outdated_fact",
+    "span": "Join 2 million happy users of LumoraPay!",
+    "source_id": "F01",
+    "source_text": "Lumora Pay has 2 million registered users. (expired 2026-09-30; owner: Comms team)",
+    "why": "This repeats fact F01, which expired on 2026-09-30.",
+    "suggested_fix": "Remove this claim, or ask Comms team for the current figure before using it.",
+    "confidence": 0.9,
+    "checked_by": "rule",
+    "status": "open"
+   },
+   {
+    "id": "f-002",
+    "category": "terminology",
+    "span": "LumoraPay",
+    "source_id": "T01",
+    "source_text": "Approved: 'Lumora Pay'. Always two words, both capitalised.",
+    "why": "'LumoraPay' is a banned variant. Use 'Lumora Pay'.",
+    "suggested_fix": "Lumora Pay",
+    "confidence": 1.0,
+    "checked_by": "rule",
+    "status": "open"
+   },
+   {
+    "id": "f-003",
+    "category": "claim",
+    "span": "We are India's fastest payment app",
+    "source_id": "UNVERIFIED",
+    "source_text": "",
+    "why": "Factual claims must be supported by an approved source in the brand kit.",
+    "suggested_fix": "LumoraPay is a secure payment app",
+    "confidence": 0.6,
+    "checked_by": "ai",
+    "status": "open"
+   },
+   {
+    "id": "f-004",
+    "category": "claim",
+    "span": "every transfer arrives instantly",
+    "source_id": "G07",
+    "source_text": "Substantiate product claims. Make factual claims only when supported by a current approved source in the brand kit. Avoid: Every transfer arrives instantly.",
+    "why": "Product claims must be substantiated by a current approved source, and transfers do not always arrive instantly.",
+    "suggested_fix": "transfers are processed securely",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   },
+   {
+    "id": "f-005",
+    "category": "accessibility",
+    "span": "Tap the green button above",
+    "source_id": "G15",
+    "source_text": "Make instructions accessible. Do not rely on color, position, or an image alone to communicate an instruction or status. Avoid: Tap the green button above.",
+    "why": "Instructions must not rely on color, position, or an image alone.",
+    "suggested_fix": "Select the sign-up option below",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   },
+   {
+    "id": "f-006",
+    "category": "tone",
+    "span": "sign up now or miss your chance",
+    "source_id": "G03",
+    "source_text": "Sound confident, not pushy. Explain what Lumora can do without pressuring people or promising an outcome. Avoid: Sign up now or miss your chance to get rich.",
+    "why": "Sound confident, not pushy, and avoid pressuring people or using phrases like sign up now or miss your chance.",
+    "suggested_fix": "learn more about signing up",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   }
+  ]
+ },
+ "a5df984a90bcc3eaf48e9c9260a352f731d564c6017c9f5e094c74fe840baf63": {
+  "sample_id": "fees",
+  "model": "gemini-3.5-flash-lite",
+  "generated_at": "2026-11-14T16:19:05+00:00",
+  "findings": [
+   {
+    "id": "f-001",
+    "category": "claim",
+    "span": "all transfers are always free",
+    "source_id": "G09",
+    "source_text": "State fees accurately. Describe fees only with current approved details, and make any conditions easy to notice. Avoid: All transfers are always free.",
+    "why": "The brand guidelines state to avoid claiming that all transfers are always free and require accurate fee descriptions.",
+    "suggested_fix": "Review our current fee structure for details on transfer costs.",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   },
+   {
+    "id": "f-002",
+    "category": "messaging",
+    "span": "you are guaranteed to save money every month",
+    "source_id": "G08",
+    "source_text": "Avoid guarantees. Never guarantee earnings, savings, approval, or uninterrupted service. Avoid: You are guaranteed to save money every month.",
+    "why": "The brand guidelines explicitly forbid guaranteeing earnings, savings, approval, or uninterrupted service.",
+    "suggested_fix": "Lumora Pay helps you manage your money effectively.",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   },
+   {
+    "id": "f-003",
+    "category": "outdated_fact",
+    "span": "Lumora Pay supports transfers in 12 currencies, so you can pay anyone, anywhere.",
+    "source_id": "F02",
+    "source_text": "Lumora Pay supports transfers in 12 currencies. (expired 2026-08-31; owner: Product marketing)",
+    "why": "This repeats fact F02, which expired on 2026-08-31.",
+    "suggested_fix": "Remove this claim, or ask Product marketing for the current figure before using it.",
+    "confidence": 0.9,
+    "checked_by": "rule",
+    "status": "open"
+   }
+  ]
+ },
+ "68070cf20df3d56f8a8d81585a4effb1deb0f8728a2d34a2a8107379cb461062": {
+  "sample_id": "update",
+  "model": "gemini-3.5-flash-lite",
+  "generated_at": "2026-11-14T16:19:22+00:00",
+  "findings": [
+   {
+    "id": "f-001",
+    "category": "messaging",
+    "span": "We would like to take this opportunity to inform you that our new infrastructure migration is now live.",
+    "source_id": "G02",
+    "source_text": "Be clear and concise. Put the main point first. Keep sentences short and remove words that do not help the reader. Avoid: We would like to take this opportunity to inform you that your transfer has now been initiated.",
+    "why": "The text is wordy and does not put the main point first.",
+    "suggested_fix": "Our new infrastructure migration is now live.",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   },
+   {
+    "id": "f-002",
+    "category": "terminology",
+    "span": "spend dashboard (SID)",
+    "source_id": "G06",
+    "source_text": "Keep feature names consistent. Use the approved name for each feature. Do not invent abbreviations or alternate labels. Avoid: Check your spend dashboard (SID) for monthly spend.",
+    "why": "It uses an unapproved abbreviation or alternate label for the feature.",
+    "suggested_fix": "Spend Insights",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   },
+   {
+    "id": "f-003",
+    "category": "messaging",
+    "span": "You're all set.",
+    "source_id": "G13",
+    "source_text": "Be transparent about next steps. Tell customers what will happen next and what action, if any, they need to take. Avoid: You're all set.",
+    "why": "It lacks transparency about next steps and what action the customer needs to take.",
+    "suggested_fix": "Please check your account for further updates.",
+    "confidence": 1.0,
+    "checked_by": "ai",
+    "status": "open"
+   }
+  ]
+ },
+ "6b37948eb8a44d3b26642a076071c51696cd99b9dd688817e9be909223cce791": {
+  "sample_id": "clean",
+  "model": "gemini-3.5-flash-lite",
+  "generated_at": "2026-11-14T16:20:30+00:00",
+  "findings": []
+ }
+}
