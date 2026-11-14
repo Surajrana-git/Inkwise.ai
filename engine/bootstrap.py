@@ -1,8 +1,10 @@
-"""App startup: database + knowledge index. Owner: Suraj (Step 9).
+"""App startup: database, demo data, knowledge index. Owner: Suraj (Step 9, Round 3).
 
 Call `startup()` once per process (the Streamlit app wraps it in st.cache_resource).
 Streamlit Community Cloud storage is wiped on restart, so everything here must be
-safe to run again from scratch.
+safe to run again from scratch: tables are created, demo users and demo content are
+seeded only when missing, and renewed facts / accepted rewordings stored in the DB
+are applied to the loaded brand kit.
 """
 from __future__ import annotations
 
@@ -33,13 +35,14 @@ class AppState:
     kb: knowledge.KnowledgeBase
     brand_kit_dir: Path
     using_sample_kit: bool
+    seeded_items: int = 0
 
 
 def _kit_ready(folder: Path) -> bool:
     return all((folder / n).exists() for n in ("guidelines.json", "facts.json", "glossary.json"))
 
 
-def startup() -> AppState:
+def startup(seed: bool = True) -> AppState:
     try:
         from dotenv import load_dotenv
 
@@ -54,5 +57,21 @@ def startup() -> AppState:
     if sample:
         log.warning("data/brand_kit is incomplete; using the small sample kit in tests/fixtures")
         kit = SAMPLE_KIT
-    kb = knowledge.build_index(kit)
-    return AppState(kb=kb, brand_kit_dir=kit, using_sample_kit=sample)
+    kb = knowledge.build_index(kit)  # also becomes knowledge.get_kb()
+
+    # Renewals and accepted rewordings made earlier live in the DB; the JSON kit stays untouched.
+    try:
+        workflow.apply_fact_overrides(kb.facts)
+        workflow.apply_guideline_overrides(kb.guidelines)
+    except Exception as e:  # never block startup
+        log.warning("could not apply stored overrides: %s", e)
+
+    seeded = 0
+    if seed:
+        try:
+            from engine import seed as seed_mod
+
+            seeded = seed_mod.seed_if_empty()
+        except Exception as e:
+            log.warning("demo data not seeded: %s", e)
+    return AppState(kb=kb, brand_kit_dir=kit, using_sample_kit=sample, seeded_items=seeded)
