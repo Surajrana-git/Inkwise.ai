@@ -195,6 +195,28 @@ def _positions(text: str, findings: list[dict]) -> None:
 # ---------------------------------------------------------------- review (text and image)
 
 _cache: "OrderedDict[str, dict]" = OrderedDict()
+DEMO_SAMPLES = ROOT / "data" / "demo_samples.json"
+DEMO_REVIEWS = ROOT / "data" / "demo_reviews.json"
+_demo: dict | None = None
+
+
+def demo_samples() -> list[dict]:
+    """Sample texts for a "Try a sample" picker: [{"id", "title", "text"}]."""
+    try:
+        return json.loads(DEMO_SAMPLES.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _demo_reviews() -> dict:
+    """AI results stored by scripts/precompute_demo.py, keyed by sha256 of the text."""
+    global _demo
+    if _demo is None:
+        try:
+            _demo = json.loads(DEMO_REVIEWS.read_text(encoding="utf-8"))
+        except Exception:
+            _demo = {}
+    return _demo
 
 
 def validate_text(text: str) -> str:
@@ -216,6 +238,13 @@ def review_text_full(text: str, use_cache: bool = True) -> dict:
         hit["cached"] = True
         _cache.move_to_end(key)
         return hit
+    stored = _demo_reviews().get(key) if use_cache else None
+    if stored:  # a demo sample: AI result produced earlier, no Gemini call needed
+        findings = [_to_dict(f) for f in stored.get("findings", [])]
+        _positions(text, findings)
+        findings.sort(key=lambda x: (x.get("start") is None, x.get("start") or 0))
+        return {"findings": findings, "ai_error": None, "model": stored.get("model", ""), "cached": True,
+                "precomputed_at": stored.get("generated_at", "")}
     mod = _module("review", "engine.review", ["review_text"])
     with _gemini_lock:  # free-tier Gemini: one call at a time per process
         result = mod.review_text(text)
