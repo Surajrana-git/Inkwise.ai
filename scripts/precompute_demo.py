@@ -38,8 +38,14 @@ def key(text: str) -> str:
 
 def main() -> None:
     samples = json.loads(SAMPLES.read_text(encoding="utf-8"))
-    out = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
+    old = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {}
+    force = "--force" in sys.argv
+    wanted = {key(s["text"]) for s in samples}
+    out = {k: v for k, v in old.items() if k in wanted}   # drop results for texts no longer in the samples
     for s in samples:
+        if key(s["text"]) in out and not force:
+            print(f"{s['id']}: already stored (use --force to redo)")
+            continue
         for attempt in range(3):
             r = review_text(s["text"])
             if r.model:
