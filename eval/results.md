@@ -1,15 +1,18 @@
 # Evaluation results
 
 - Set: test, rules + Gemini (100 samples)
-- Precision: 100.0% (1/1 findings match a labelled error)
-- Recall: 1.2% (1/80 labelled errors found)
-- Citation accuracy: 100.0% (1/1 matched findings cite the labelled source)
-- Clean samples wrongly flagged: 0/20
+- Precision: 83.5% (137/164 findings match a labelled error)
+- Recall: 95.8% (137/143 labelled errors found)
+- Citation accuracy: 83.2% (114/137 matched findings cite the labelled source)
+- AI answered: 97/100 samples; failures: AI review unavailable (ServerError). Showing rule checks only. (3)
+- Clean samples wrongly flagged: 10/25
 
 ## Recall by error type
-- accessibility: 0/13
-- claim: 0/14
-- messaging: 0/4
-- outdated_fact: 0/12
-- terminology: 1/26
-- tone: 0/11
+- accessibility: 11/12
+- claim: 23/23
+- messaging: 11/12
+- outdated_fact: 23/26
+- terminology: 50/50
+- tone: 19/20
+
+Labelled sources most often cited wrongly: G07 (8), G03 (6), G12 (5), G15 (2), F01 (1)
