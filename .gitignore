@@ -24,4 +24,4 @@ chroma_db/
 __pycache__/
 *.pyc
 .env
-.streamlit/secrets.toml
+.streamlit/secrets.tomleval/results_ai.txt
