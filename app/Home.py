@@ -47,6 +47,8 @@ if not st.session_state.get("splash_done"):
     splash()
     st.stop()
 
+services.ensure_started()
+
 
 theme.render_shell()
 
@@ -92,11 +94,15 @@ except services.BackendNotConnected as e:
 
 dash = "–"
 theme.metric_row([
-    (stats.get("reviews_today", dash), "Reviews", ""),
-    (stats.get("open_findings", dash), "Open", ""),
-    (stats.get("pending_approvals", dash), "Waiting", "warn"),
-    (stats.get("expired_facts", dash), "Expired", "warn"),
+    (stats.get("reviews_today", dash), "Reviews today", ""),
+    (stats.get("open_findings", dash), "Open findings", ""),
+    (stats.get("pending_approvals", dash), "Waiting for approval", "warn"),
+    (stats.get("expired_facts", dash), "Expired facts", "warn"),
+    (stats.get("expiring_facts", dash), "Expiring in 30 days", "warn"),
 ])
+if stats.get("seeded_at"):
+    st.caption(f"Demo workspace: sample history and decisions were loaded on {stats['seeded_at']} UTC. "
+               "The free host resets storage on restart; the demo data comes back automatically.")
 
 st.markdown('<div class="iw-section">Waiting for you</div>', unsafe_allow_html=True)
 if wf_error:
@@ -137,11 +143,11 @@ else:
 
 theme.ai_banner()
 
-with st.expander("Backend status"):
-    names = {
-        "review": "Review engine (Riyana)",
-        "workflow": "Workflow and approvals (Suraj)",
-        "knowledge": "Brand kit (Pritha)",
-    }
-    for part, live in services.backend_status().items():
-        st.write(f"{'Connected' if live else 'Not connected'} · {names[part]}")
+with st.expander("System status"):
+    h = services.health()
+    labels = [("db", "Database"), ("brand_kit", "Brand kit loaded"), ("seeded", "Demo data loaded"),
+              ("gemini_key", "Gemini key configured (AI review on)"), ("visual_checks", "Visual checks available")]
+    for key, label in labels:
+        st.write(f"{'OK' if h.get(key) else 'Off'} · {label}")
+    if not h.get("gemini_key"):
+        st.caption("Without a Gemini key the app still runs: rule checks (terminology, expired facts, readability) work offline.")

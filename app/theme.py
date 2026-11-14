@@ -6,7 +6,7 @@ import streamlit as st
 
 import services
 
-REQUIRE_LOGIN = False
+REQUIRE_LOGIN = True  # Round 3: real sign-in with the demo accounts printed on the login screen
 
 APP_DIR = Path(__file__).resolve().parent
 ROOT = APP_DIR.parent
@@ -248,6 +248,19 @@ def login_screen() -> None:
     with mid:
         st.markdown(f'<div class="iw-login"><img src="{logo_src()}"/></div>', unsafe_allow_html=True)
         st.subheader("Sign in")
+        st.caption("Inkwise checks marketing copy against the Lumora brand kit and explains every finding "
+                   "with its source. Use a demo account below; no real data is involved.")
+        accounts = services.demo_accounts()
+        if accounts:
+            rows = "".join(
+                f"<tr><td><code>{html.escape(a['username'])}</code></td><td><code>{html.escape(a['password'])}</code></td>"
+                f"<td>{html.escape(a['role'])}</td><td>{html.escape(a['can'])}</td></tr>" for a in accounts)
+            st.markdown(
+                '<div class="iw-card"><h4>Demo accounts</h4>'
+                '<table style="width:100%;font-size:.85rem;border-collapse:collapse">'
+                '<tr style="color:#5A6480"><th align="left">Username</th><th align="left">Password</th>'
+                '<th align="left">Role</th><th align="left">Can do</th></tr>' + rows + '</table></div>',
+                unsafe_allow_html=True)
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
@@ -268,9 +281,11 @@ def login_screen() -> None:
                         st.session_state.auth = True
                         st.session_state.user = result.get("user", username)
                         st.session_state.role = result.get("role", role)
+                        st.session_state.team = result.get("team", "")
                         st.rerun()
                     else:
-                        st.error("Those details did not match. Check your username, password and role.")
+                        st.error("Those details did not match. Check the username, password and that the "
+                                 "role matches the account (see the demo accounts above).")
     st.stop()
 
 
