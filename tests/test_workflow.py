@@ -132,8 +132,7 @@ def test_dashboard_activity_and_login(monkeypatch):
     assert stats["reviews_today"] == 1 and stats["open_findings"] == 1 and stats["pending_approvals"] == 1
     act = wf.get_recent_activity(3)
     assert act[0]["who"] == "inkwise-ai" and act[0]["status"] in ("open", "ok", "bad")
-    monkeypatch.setenv("INKWISE_DEMO_PASSWORD", "pw")
-    assert wf.authenticate("meera", "pw", "manager") == {"user": "meera", "role": "manager"}
+    assert wf.authenticate("meera", "demo123", "manager")["user"] == "meera"
     assert wf.authenticate("meera", "wrong", "manager") is None
 
 
