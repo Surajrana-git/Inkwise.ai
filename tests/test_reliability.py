@@ -57,7 +57,7 @@ def test_highlight_escapes_html():
     import theme
     text = "<b>LumoraPay</b>"
     html_out = theme.highlight_html(text, [{"start": 3, "end": 12, "category": "terminology"}])
-    assert "<b>" not in html_out.replace("<b>", "", 0) or "&lt;b&gt;" in html_out
+    assert "&lt;b&gt;" in html_out and "<b>" not in html_out
 
 
 @pytest.mark.parametrize("data,msg", [(b"", "Choose an image"), (b"hello", "not a PNG or JPEG"),
@@ -96,3 +96,25 @@ def test_review_cache_serves_repeat_text():
     finally:
         review.review_text = orig
     assert len(calls) == 1 and second["cached"] is True
+
+
+def test_demo_samples_use_stored_results_without_calling_gemini(monkeypatch, tmp_path):
+    import json
+    import services
+    sample = services.demo_samples()[0]
+    import hashlib
+    k = hashlib.sha256(sample["text"].encode()).hexdigest()
+    stored = {k: {"model": "stored-model", "generated_at": "2026-11-14T00:00:00+00:00",
+                  "findings": [{"id": "f-001", "category": "terminology", "span": "LumoraPay", "source_id": "T01",
+                                "source_text": "Approved: 'Lumora Pay'.", "why": "banned variant",
+                                "suggested_fix": "Lumora Pay", "confidence": 1.0, "checked_by": "rule"}]}}
+    path = tmp_path / "demo.json"
+    path.write_text(json.dumps(stored))
+    monkeypatch.setattr(services, "DEMO_REVIEWS", path)
+    monkeypatch.setattr(services, "_demo", None)
+
+    def boom(*a, **kw):
+        raise AssertionError("Gemini must not be called for a stored demo sample")
+    monkeypatch.setattr(review, "review_text", boom)
+    out = services.review_text_full(sample["text"])
+    assert out["model"] == "stored-model" and out["cached"] and out["findings"][0]["start"] is not None
