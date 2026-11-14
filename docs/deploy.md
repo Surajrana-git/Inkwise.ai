@@ -10,9 +10,9 @@ One-time setup, about 5 minutes. Free.
    - Secrets:
      ```toml
      GEMINI_API_KEY = "your-key"
-     # optional
-     # GEMINI_MODEL = "gemini-flash-latest"
-     # INKWISE_DEMO_PASSWORD = "demo123"
+     # free tier: lite models first (higher free limits), bigger flash as the last backup
+     GEMINI_MODEL = "gemini-3.5-flash-lite"
+     GEMINI_FALLBACK_MODELS = "gemini-3.1-flash-lite,gemini-flash-latest"
      ```
 5. **Deploy.** Put the `*.streamlit.app` link in the README and the submission.
 
@@ -31,6 +31,9 @@ as `asha`, `meera` and `ravi` (password `demo123`).
   (terminology, expired facts, readability) with a clear banner. Search falls back to keyword (BM25).
 - Gemini is called one request at a time per server process, and identical texts are served from a cache,
   so a judge clicking Run twice does not spend quota twice.
+- **Free-tier quota.** The demo sample texts in `data/demo_samples.json` have stored AI results in
+  `data/demo_reviews.json` (made with `python scripts/precompute_demo.py`), so trying a sample costs no
+  quota. Run the evaluation with a team member's own key, not the key used by the live app.
 - If the log shows a ChromaDB "sqlite3 version" error, `pysqlite3-binary` in requirements.txt fixes it
   (installed on Linux only).
 
