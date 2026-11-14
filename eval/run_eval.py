@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from collections import Counter, defaultdict
@@ -20,6 +21,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+try:  # the app loads .env in bootstrap; the eval must do the same or it silently runs rules only
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env")
+except ImportError:
+    pass
 
 from engine.review import review_text  # noqa: E402
 
@@ -46,11 +54,17 @@ def load(path: Path) -> list[dict]:
 
 
 def evaluate(samples: list[dict], use_ai: bool, sleep: float) -> dict:
-    n_find = n_err = tp = cite_ok = clean_total = clean_flagged = 0
+    n_find = n_err = tp = cite_ok = clean_total = clean_flagged = ai_ok = 0
+    ai_errors: Counter = Counter()
     wrong_cites: Counter = Counter()
     by_type: dict = defaultdict(lambda: [0, 0])  # type -> [found, total]
     for i, s in enumerate(samples, 1):
         result = review_text(s["text"], use_ai=use_ai)
+        if use_ai:
+            if result.model:
+                ai_ok += 1
+            else:
+                ai_errors[result.ai_error or "no model answered"] += 1
         findings = [{"span": f.span, "source_id": f.source_id} for f in result.findings]
         errors = s.get("errors", [])
         pairs = match(findings, errors)
@@ -74,7 +88,7 @@ def evaluate(samples: list[dict], use_ai: bool, sleep: float) -> dict:
             time.sleep(sleep)  # stay under the Gemini free-tier rate limit
     return dict(n=len(samples), n_find=n_find, n_err=n_err, tp=tp, cite_ok=cite_ok,
                 clean_total=clean_total, clean_flagged=clean_flagged,
-                wrong_cites=wrong_cites, by_type=dict(by_type))
+                wrong_cites=wrong_cites, by_type=dict(by_type), ai_ok=ai_ok, ai_errors=ai_errors)
 
 
 def report(r: dict, label: str) -> str:
@@ -88,6 +102,10 @@ def report(r: dict, label: str) -> str:
         f"- Recall: {rc:.1%} ({r['tp']}/{r['n_err']} labelled errors found)",
         f"- Citation accuracy: {c:.1%} ({r['cite_ok']}/{r['tp']} matched findings cite the labelled source)",
     ]
+    if r.get("ai_errors") or (r.get("ai_ok") and r["ai_ok"] < r["n"]):
+        lines.append(f"- AI answered: {r['ai_ok']}/{r['n']} samples"
+                     + ("; failures: " + "; ".join(f"{k} ({v})" for k, v in r["ai_errors"].most_common(3))
+                        if r["ai_errors"] else ""))
     if r["clean_total"]:
         lines.append(f"- Clean samples wrongly flagged: {r['clean_flagged']}/{r['clean_total']}")
     lines += ["", "## Recall by error type"]
@@ -107,8 +125,15 @@ def main() -> None:
     ap.add_argument("--sleep", type=float, default=4.0, help="seconds between Gemini calls")
     a = ap.parse_args()
 
+    if not a.rules_only and not os.getenv("GEMINI_API_KEY"):
+        sys.exit("GEMINI_API_KEY is not set (put it in .env). Use --rules-only for the baseline.")
     samples = load(ROOT / "eval" / f"{a.split}.jsonl")[: a.limit]
     r = evaluate(samples, use_ai=not a.rules_only, sleep=a.sleep)
+    if not a.rules_only and r["ai_ok"] < len(samples) * 0.9:
+        print(f"\nWARNING: Gemini answered only {r['ai_ok']}/{len(samples)} samples; "
+              "results.md not overwritten. Fix the key/model and run again.")
+        print(report(r, f"{a.split}, rules + Gemini (incomplete)"))
+        return
     text = report(r, f"{a.split}, {'rules only' if a.rules_only else 'rules + Gemini'}")
     print("\n" + text)
     if a.split == "test" and not a.rules_only and a.limit is None:

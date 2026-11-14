@@ -25,3 +25,5 @@ __pycache__/
 *.pyc
 .env
 .streamlit/secrets.toml
+eval/results_ai.txt
+
