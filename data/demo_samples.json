@@ -1,10 +1,22 @@
 [
-  {"id": "launch", "title": "Launch post (several issues)",
-   "text": "Join 2 million happy users of LumoraPay! We are India's fastest payment app and every transfer arrives instantly. Tap the green button above to sign up now or miss your chance."},
-  {"id": "fees", "title": "Fee email (claims and guarantees)",
-   "text": "Good news: all transfers are always free and you are guaranteed to save money every month with Lumora Pay. Lumora Pay supports transfers in 12 currencies, so you can pay anyone, anywhere."},
-  {"id": "update", "title": "App update note (tone and next steps)",
-   "text": "We would like to take this opportunity to inform you that our new infrastructure migration is now live. Check your spend dashboard (SID) for monthly spend. You're all set."},
-  {"id": "clean", "title": "Clean example (should pass)",
-   "text": "Spend Insights groups eligible transactions by spending category, so you can see where your money goes. Turn on transaction notifications in the Lumora app settings to stay updated."}
+  {
+    "id": "launch",
+    "title": "Launch post (several issues)",
+    "text": "Join 2 million happy users of LumoraPay! We are India's fastest payment app and every transfer arrives instantly. Tap the green button above to sign up now or miss your chance."
+  },
+  {
+    "id": "fees",
+    "title": "Fee email (claims and guarantees)",
+    "text": "Good news: all transfers are always free and you are guaranteed to save money every month with Lumora Pay. Lumora Pay supports transfers in 12 currencies, so you can pay anyone, anywhere."
+  },
+  {
+    "id": "update",
+    "title": "App update note (tone and next steps)",
+    "text": "We would like to take this opportunity to inform you that our new infrastructure migration is now live. Check your spend dashboard (SID) for monthly spend. You're all set."
+  },
+  {
+    "id": "clean",
+    "title": "Clean example (should pass)",
+    "text": "Spend Insights groups your spending by category. You can see where your money goes each month. To change your contact details, open profile settings."
+  }
 ]
