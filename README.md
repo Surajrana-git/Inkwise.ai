@@ -31,7 +31,7 @@ the name in the top-right corner, and the **Help** tab answers every question be
 
 The **Review** page also shows a five-step guided story that switches to the right person for each step.
 
-All data is synthetic: **Lumora** is a fictional fintech brand written by the team.
+All data is synthetic: **Lumora** is a fictional fintech brand written by the team. The evaluation drafts were generated with **Adaption Labs** and labelled by hand.
 
 ## What it does
 
@@ -129,6 +129,8 @@ We used AI tools while building Inkwise, and we say so openly:
   member reviewed and understands the code they committed.
 - **Google Gemini** is the model inside the product: it reviews copy, reads the text and logo in campaign images, and
   drafts clearer guideline wording. Personal data is masked before every call.
+- **Adaption Labs** generated the synthetic evaluation drafts. We checked every label by hand before scoring
+  ([eval/README.md](eval/README.md)).
 
 Full details, including models, data sources and libraries: [docs/disclosures.md](docs/disclosures.md).
 
