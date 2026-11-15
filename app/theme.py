@@ -696,7 +696,10 @@ SHELL_CSS = f"""
 .stApp {{ background: __INNER_BG__ !important; background-attachment: fixed !important; }}
 .block-container {{ padding:0 2.6rem 4rem !important; max-width:100% !important; }}
 /* hidden <style> blocks before the header still take a flex gap each: take them out of the flow */
-[data-testid="stVerticalBlock"] > div:has(~ div > .st-key-iw_header) {{ position:absolute !important; }}
+[data-testid="stVerticalBlock"] > div:has(~ div > .st-key-iw_header) {{ position:absolute !important; width:0 !important;
+  height:0 !important; overflow:hidden !important; }}
+/* the header and footer colour bands extend past the content; never let that create a sideways scroll */
+[data-testid="stMain"] {{ overflow-x:hidden !important; }}
 /* pin the header: its own wrapper is exactly its height, so make the wrapper the sticky element */
 [data-testid="stVerticalBlock"] > div:has(> .st-key-iw_header) {{ position:sticky !important; top:0; z-index:999; }}
 [data-testid="stAppViewContainer"]::before {{ content:""; position:absolute; top:0; left:0; right:0; height:93px;
@@ -824,12 +827,18 @@ SHELL_CSS = f"""
 .st-key-iw_tabs [data-testid="stHorizontalBlock"] {{ gap:0 !important; flex-wrap:nowrap; }}
 .st-key-iw_tabs [data-testid="stColumn"] {{ min-width:0 !important; }}
 /* tabs: every tab is the same element with the same box, so switching pages never moves anything */
-.st-key-iw_tabs [data-testid="stPageLink"] {{ margin:0 3px; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a {{ border-radius:999px !important; padding:7px 8px !important; min-height:36px;
+.st-key-iw_tabs [data-testid="stPageLink"] {{ margin:0 clamp(0px, .2vw, 3px); }}
+.st-key-iw_header .iw-status {{ font-size:clamp(.58rem, .76vw, .72rem); padding:4px clamp(5px, .6vw, 10px); gap:clamp(3px, .4vw, 6px); }}
+@media (max-width: 1250px) {{ .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button p {{ font-size:.7rem !important; }}
+  .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button p strong {{ font-size:.8rem !important; }} }}
+.st-key-iw_header .iw-wordmark span {{ font-size:clamp(1.2rem, 1.75vw, 1.6rem) !important; }}
+@media (max-width: 1150px) {{ .iw-strip span:nth-of-type(2), .iw-strip .pill:not(.mint) {{ display:none; }} }}
+.st-key-iw_tabs [data-testid="stPageLink"] a {{ border-radius:999px !important; padding:7px clamp(2px, .45vw, 8px) !important; min-height:36px;
   border:1px solid transparent !important; background:transparent !important; justify-content:center;
   transition:background-color .15s ease, border-color .15s ease; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a p {{ font-size:.84rem !important; font-weight:600 !important; white-space:nowrap;
-  letter-spacing:.01em; }}
+.st-key-iw_tabs [data-testid="stPageLink"] a p {{ font-size:clamp(.66rem, .96vw, .84rem) !important; font-weight:600 !important;
+  white-space:nowrap; letter-spacing:.01em; overflow:visible !important; text-overflow:clip !important; }}
+.st-key-iw_tabs [data-testid="stPageLink"] a > * {{ overflow:visible !important; }}
 .iw-tab-fallback {{ display:block; text-align:center; padding:7px 12px; min-height:36px; border-radius:999px;
   font-size:.84rem; font-weight:600; white-space:nowrap; border:1px solid transparent; }}
 .st-key-iw_user [data-testid="stPopover"] button {{ background:transparent !important; border:none !important;
@@ -1257,13 +1266,13 @@ def header() -> None:
             '<i class="pill mint">CodeTitans India 2026</i><span>Round 3 · The Finish</span>'
             '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
             '<span class="sp"></span><span>Built by <b>DECODIANS</b></span></div>', unsafe_allow_html=True)
-        c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.9, 6.0, 1.05, 0.55, 2.0], vertical_alignment="center",
+        c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.75, 6.2, 1.15, 0.55, 1.95], vertical_alignment="center",
                                                               gap="small")
         with c_logo:
             st.markdown(wordmark(True, 44), unsafe_allow_html=True)
         with c_tabs, st.container(key="iw_tabs"):
             tabs = [t for t in NAV if t[2] is None or role in t[2]]
-            widths = [len(label) + 5 for _p, label, _r in tabs]       # longer labels get wider pills, nothing truncates
+            widths = [max(len(label), 6) + 5 for _p, label, _r in tabs]       # longer labels get wider pills, nothing truncates
             for i, (col, (page, label, _r)) in enumerate(zip(st.columns(widths), tabs)):
                 on = "on" if page == current else "off"
                 with col, st.container(key=f"iw_tab_{on}_{i}"):
