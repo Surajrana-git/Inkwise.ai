@@ -35,6 +35,9 @@ def find_occurrences(text: str, span: str) -> list[tuple[int, int]]:
 def locate(findings: list[dict], text: str) -> list[dict]:
     """Set f["occurrences"] (all places), f["start"]/f["end"] (first place) and f["n"]."""
     for f in findings:
+        if f.get("where") == "image":           # found in the creative, not in the copy
+            f["occurrences"], f["start"], f["end"] = [], None, None
+            continue
         occ = _norm_occ(f.get("occurrences")) or find_occurrences(text, f.get("span_text") or "")
         if not occ and f.get("start") is not None and f.get("end") is not None:
             occ = [(f["start"], f["end"])]
@@ -139,3 +142,75 @@ def badge_html(state: str | None, days: int | None) -> str:
         return (f'<span style="background:#ffedd5;color:#c2410c;padding:2px 8px;border-radius:10px;'
                 f'font-size:12px;font-weight:700">{label}</span>')
     return ""
+
+# ---------------------------------------------------------------- live revision after each decision
+_REMOVE = re.compile(r"^\s*remove (this|the) ", re.I)
+_INSTRUCTION = re.compile(r"^\s*(rewrite|split|rephrase|shorten|simplify|ask|check|review) (this|the|it)\b", re.I)
+
+
+def fix_action(f: dict) -> tuple[str, str]:
+    """What a decision does to the text: ("replace", new) / ("remove", "") / ("keep", "") / ("manual", "") / ("open", "")."""
+    st_, fix = f.get("status"), (f.get("suggested_fix") or "").strip()
+    if st_ == "open":
+        return "open", ""
+    if st_ == "rejected":
+        return "keep", ""
+    if st_ == "edited":
+        return ("remove", "") if not fix else ("replace", fix)
+    if _REMOVE.match(fix):
+        return "remove", ""
+    if not fix or _INSTRUCTION.match(fix):
+        return "manual", ""          # advice, not wording: the writer still has to rewrite it
+    return "replace", fix
+
+
+def revision(text: str, findings: list[dict]) -> tuple[list[dict], str, list[int]]:
+    """Apply every decision to the draft.
+
+    Returns (segments, clean_text, manual_ns). Segments are {"kind", "text", "n", "category"} with kind in
+    plain / open / kept / removed / added / manual. An outer change wins over a finding inside it
+    (e.g. removing a sentence also removes the brand-name fix inside it); if the outer one is rejected,
+    the inner one still applies."""
+    spans = []
+    for f in findings:
+        for s, e in f.get("occurrences") or []:
+            spans.append((s, e, f))
+    spans.sort(key=lambda x: (x[0], -(x[1] - x[0])))
+    chosen, end_at = [], -1
+    applied = [(s, e) for s, e, f in spans if fix_action(f)[0] in ("replace", "remove")]
+    for s, e, f in spans:
+        act = fix_action(f)[0]
+        if s < end_at:
+            continue
+        # a kept/open outer span should not hide an applied inner change
+        if act not in ("replace", "remove") and any(s <= a and b <= e and (a, b) != (s, e) for a, b in applied):
+            continue
+        chosen.append((s, e, f))
+        end_at = e
+    segs, clean, pos, manual = [], [], 0, []
+    for s, e, f in chosen:
+        if s > pos:
+            segs.append({"kind": "plain", "text": text[pos:s]}); clean.append(text[pos:s])
+        act, new = fix_action(f)
+        orig, meta = text[s:e], {"n": f.get("n"), "category": str(f.get("category", "")).lower()}
+        if act == "replace":
+            nxt = text[e:].lstrip(" \t")[:1]
+            if new[-1:] in ".!" and nxt and (nxt.islower() or nxt in ".,;:!?"):
+                new = new[:-1]   # the sentence carries on after the span: drop the fix's own full stop
+            segs += [{"kind": "removed", "text": orig, **meta}, {"kind": "added", "text": new, **meta}]
+            clean.append(new)
+        elif act == "remove":
+            segs.append({"kind": "removed", "text": orig, **meta})
+        else:
+            segs.append({"kind": {"keep": "kept"}.get(act, act), "text": orig, **meta}); clean.append(orig)
+            if act == "manual" and f.get("n") not in manual:
+                manual.append(f.get("n"))
+        pos = e
+    if pos < len(text):
+        segs.append({"kind": "plain", "text": text[pos:]}); clean.append(text[pos:])
+    out = "".join(clean)
+    out = re.sub(r"[ \t]{2,}", " ", out)
+    out = re.sub(r"\s+([.,!?;:])", r"\1", out)
+    out = re.sub(r"([.!?])\1+", r"\1", out)
+    out = re.sub(r"(^|\n)[ \t]*[.,;:]\s*", r"\1", out)
+    return segs, out.strip(), manual

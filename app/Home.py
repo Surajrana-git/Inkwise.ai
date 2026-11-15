@@ -1,3 +1,4 @@
+import html
 import sys
 import time
 from pathlib import Path
@@ -10,7 +11,7 @@ import theme
 
 st.set_page_config(page_title="inkwise.ai", layout="wide")
 
-SPLASH_SECONDS = 5
+SPLASH_SECONDS = 1.2
 
 PAGE_REVIEW = "pages/1_Review.py"
 PAGE_APPROVALS = "pages/Approvals.py"
@@ -43,7 +44,7 @@ def splash() -> None:
     st.rerun()
 
 
-if not st.session_state.get("splash_done"):
+if not st.session_state.get("splash_done") and not st.session_state.get("auth"):
     splash()
     st.stop()
 
@@ -66,88 +67,160 @@ if not theme.REQUIRE_LOGIN:
 
 role = st.session_state.role
 user = st.session_state.user
+if role == "Creator" and st.session_state.get("landed_for") != user:
+    st.session_state.landed_for = user
+    try:
+        st.switch_page(PAGE_REVIEW)
+    except Exception:
+        pass
+first = theme.full_name(user).split()[0]
 
-st.title("Home")
-st.caption(f"{user} · {role}")
+import datetime as _dt
+hour = (_dt.datetime.utcnow() + _dt.timedelta(hours=5, minutes=30)).hour
+greet = "Good morning" if 5 <= hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
+SUB = {
+    "Creator": "Check your copy before it goes out. Every finding shows the brand-kit source behind it.",
+    "Manager": "Drafts waiting for you, and which guidelines your team finds unclear.",
+    "Admin": "Keep facts current, settle unclear guidelines and keep an eye on the whole workspace.",
+    "Reviewer": "Drafts waiting for a decision, with the evidence behind every finding.",
+}
+theme.page_header(f"Workspace · {theme.ORG}", f"{greet}, {first}", SUB.get(role, ""))
 
-c1, c2, _ = st.columns([1.2, 1.2, 4])
-with c1:
-    st.page_link(PAGE_REVIEW, label="Start a review", width="stretch")
-with c2:
-    st.page_link(PAGE_APPROVALS, label="Open approvals", width="stretch")
-
-wf_error = None
-stats = {}
-queue = []
-activity = []
+wf_error, stats, queue, activity, facts = None, {}, [], [], []
 try:
     stats = services.get_dashboard_stats(role)
     submissions = services.list_submissions()
-    activity = services.get_recent_activity()
+    activity = services.get_recent_activity(8)
+    facts = services.fact_register()
     if role == "Creator":
-        queue = [s for s in submissions
-                 if s.get("author") == user and str(s.get("status", "")).lower() in ("rejected", "changes_requested")]
+        queue = [s for s in submissions if s.get("author") == user and s.get("status") in ("rejected", "pending")]
     else:
-        queue = [s for s in submissions if str(s.get("status", "")).lower() in ("pending", "open", "submitted")]
+        queue = [s for s in submissions if s.get("status") == "pending"]
 except services.BackendNotConnected as e:
     wf_error = e
 
-dash = "–"
-theme.metric_row([
-    (stats.get("reviews_today", dash), "Reviews today", ""),
-    (stats.get("open_findings", dash), "Open findings", ""),
-    (stats.get("pending_approvals", dash), "Waiting for approval", "warn"),
-    (stats.get("expired_facts", dash), "Expired facts", "warn"),
-    (stats.get("expiring_facts", dash), "Expiring in 30 days", "warn"),
+# primary action per role
+a1, a2, a3, _ = st.columns([1.3, 1.3, 1.3, 4])
+def _go(col, label, page, primary=False, key=None):
+    with col:
+        try:
+            st.page_link(page, label=label, width="stretch")
+        except Exception:
+            st.button(label, key=key or label, width="stretch", type="primary" if primary else "secondary")
+if role == "Creator":
+    _go(a1, "＋  New review", PAGE_REVIEW, True)
+    _go(a2, "My submissions", "pages/History.py")
+elif role == "Admin":
+    _go(a1, f"Renew expired facts ({stats.get('expired_facts', 0)})", "pages/Fact_Register.py", True)
+    _go(a2, "Guideline insights", "pages/Insights.py")
+    _go(a3, "Brand kit", "pages/Knowledge_Base.py")
+else:
+    _go(a1, f"Review approvals ({stats.get('pending_approvals', 0)})", PAGE_APPROVALS, True)
+    _go(a2, "Guideline insights", "pages/Insights.py")
+st.write("")
+
+d = "–"
+theme.stat_cards([
+    (stats.get("reviews_today", d), "Reviews today", "✎", "#E8F6F2", "#0B5E52"),
+    (stats.get("open_findings", d), "Open findings", "◎", "#EEF2FF", "#3C4FB8"),
+    (stats.get("pending_approvals", d), "Waiting for approval", "⧗", "#FFF4E0", "#8A4B06"),
+    (stats.get("expired_facts", d), "Expired facts", "!", "#FDECEC", "#B42318"),
+    (stats.get("expiring_facts", d), "Expiring in 30 days", "◷", "#FFF7E6", "#9A5B00"),
 ])
+st.write("")
+
+left, right = st.columns([1.75, 1], gap="large")
+
+with left:
+    # needs attention
+    title = "Returned to you or waiting" if role == "Creator" else "Waiting for your decision"
+    rows = ""
+    for s in queue[:6]:
+        stc = s.get("status", "")
+        dot = "#D93025" if stc == "rejected" else "#B45309"
+        lbl = "Changes requested" if stc == "rejected" else "Pending"
+        rows += (f'<div class="iw-row"><span class="iw-dot" style="background:{dot}"></span>'
+                 f'<div class="t"><b>{html.escape(s.get("title", "Untitled"))}</b>'
+                 f'<small>{html.escape(theme.full_name(s.get("author", "")))} · {html.escape(s.get("submitted_at", ""))} · '
+                 f'{len(s.get("findings", []))} findings</small></div>'
+                 f'<span class="iw-pill {"bad" if stc == "rejected" else "open"}">{lbl}</span></div>')
+    empty = '<div class="sub" style="padding:14px 0">Nothing is waiting for you. Nice.</div>'
+    st.markdown(f'<div class="iw-panel"><h3>{title}</h3><div class="sub">{len(queue)} item(s)</div>'
+                f'{rows or empty}</div>', unsafe_allow_html=True)
+    if queue:
+        try:
+            st.page_link(PAGE_APPROVALS if role != "Creator" else "pages/History.py", label="Open the full list →")
+        except Exception:
+            pass
+
+    # activity timeline
+    COL = {"ok": "#12917F", "bad": "#D93025", "open": "#8A93A6"}
+    act = "".join(
+        f'<div class="iw-row"><span class="iw-dot" style="background:{COL.get(a.get("status"), "#8A93A6")}"></span>'
+        f'<div class="t"><b style="font-weight:600">{html.escape(theme.full_name(a.get("who", "")))} '
+        f'<span style="font-weight:400;color:#5A6480">{html.escape(a.get("what", ""))}</span></b>'
+        f'<small>{html.escape(a.get("day", ""))} · {html.escape(a.get("when", ""))} UTC</small></div></div>'
+        for a in activity)
+    st.markdown(f'<div class="iw-panel"><h3>Recent activity</h3><div class="sub">From the audit log</div>'
+                f'{act or empty}</div>', unsafe_allow_html=True)
+
+with right:
+    # guided path for judges
+    TOUR = [
+        ("1", "Evidence-grounded review", "asha", "pages/1_Review.py",
+         "Review a sample post. Each finding quotes its source, or is marked UNVERIFIED.", "launch"),
+        ("2", "Fact freshness", "ravi", "pages/Fact_Register.py",
+         "Expired facts first, each with an owner. Renew one; open drafts are re-checked.", None),
+        ("3", "Guideline clarity", "meera", "pages/Insights.py",
+         "See which rules reviewers keep overriding, and accept a clearer wording.", None),
+    ]
+    if not st.session_state.get("tour_hidden"):
+        steps = "".join(f'<div class="iw-step"><span class="num">{n}</span><div><b>{t}</b><small>{d}</small></div></div>'
+                        for n, t, _w, _p, d, _s in TOUR)
+        st.markdown(f'<div class="iw-panel"><h3>Try it in 3 minutes</h3><div class="sub">Each step signs you in as '
+                    f'the right person</div>{steps}</div>', unsafe_allow_html=True)
+        bcols = st.columns(3)
+        for col, (n, t, who, page, _d, sample_id) in zip(bcols, TOUR):
+            if col.button(f"Step {n}", key=f"tour_{n}", width="stretch", help=f"Go as {theme.full_name(who)}"):
+                if theme.switch_user(who):
+                    if sample_id:
+                        sample = next((x for x in services.demo_samples() if x["id"] == sample_id), None)
+                        if sample:
+                            st.session_state.rv_text = sample["text"]
+                            st.session_state.rv_title = sample["title"]
+                    st.switch_page(page)
+        if st.button("Hide this guide", key="tour_hide"):
+            st.session_state.tour_hidden = True
+            st.rerun()
+        st.write("")
+
+    # measured accuracy
+    ev = services.eval_summary()
+    if ev.get("recall"):
+        bars = "".join(
+            f'<div class="iw-bar"><span class="k">{html.escape(k)}</span><div class="track">'
+            f'<div class="fill" style="width:{(a / b * 100) if b else 0:.0f}%"></div></div><span class="v">{a}/{b}</span></div>'
+            for k, a, b in ev.get("by_type", []))
+        st.markdown(
+            f'<div class="iw-panel"><h3>Measured accuracy</h3><div class="sub">Labelled test set, '
+            f'{html.escape(ev.get("samples") or "100")} samples · rules + Gemini</div>'
+            f'<div class="iw-big"><div><b>{ev["recall"]}</b><small>recall</small></div>'
+            f'<div><b>{ev.get("precision", d)}</b><small>precision</small></div>'
+            f'<div><b>{ev.get("citation", d)}</b><small>correct source cited</small></div></div>'
+            f'{bars}<div class="sub" style="margin-top:8px">Method and raw results: eval/results.md</div></div>',
+            unsafe_allow_html=True)
+
+    # fact health
+    risky = [f for f in facts if f["status"] != "valid"][:4]
+    frows = "".join(
+        f'<div class="iw-row"><span class="iw-dot" style="background:{"#D93025" if f["status"] == "expired" else "#B45309"}"></span>'
+        f'<div class="t"><b>{html.escape(f["id"])} · {html.escape(f["statement"])}</b>'
+        f'<small>{html.escape(f["owner"])} · {"expired" if f["status"] == "expired" else "expires"} {html.escape(f["expires_on"])}</small></div></div>'
+        for f in risky)
+    st.markdown(f'<div class="iw-panel"><h3>Fact health</h3><div class="sub">{stats.get("expired_facts", 0)} expired · '
+                f'{stats.get("expiring_facts", 0)} expiring in 30 days</div>{frows or empty}</div>', unsafe_allow_html=True)
+
 if stats.get("seeded_at"):
-    st.caption(f"Demo workspace: sample history and decisions were loaded on {stats['seeded_at']} UTC. "
-               "The free host resets storage on restart; the demo data comes back automatically.")
-
-st.markdown('<div class="iw-section">Waiting for you</div>', unsafe_allow_html=True)
-if wf_error:
-    theme.not_connected(wf_error)
-elif not queue:
-    theme.empty_state("Nothing is waiting for you right now.")
-else:
-    for s in queue[:5]:
-        q1, q2 = st.columns([5, 1.4])
-        q1.markdown(f"**{s.get('title', 'Untitled')}**")
-        q1.caption(f"{s.get('author', '')} · {s.get('submitted', s.get('when', ''))}")
-        status = str(s.get("status", "open")).lower()
-        cls = "bad" if status in ("rejected", "changes_requested") else "open"
-        q2.markdown(
-            f'<span class="iw-pill {cls}">{status.replace("_", " ").title()}</span>',
-            unsafe_allow_html=True,
-        )
-    if len(queue) > 5:
-        st.caption(f"{len(queue) - 5} more in Approvals.")
-    st.page_link(PAGE_APPROVALS, label="Go to Approvals")
-
-st.markdown('<div class="iw-section">Recent activity</div>', unsafe_allow_html=True)
-if wf_error:
-    pass
-elif not activity:
-    theme.empty_state("No activity yet. Start a review to see it here.")
-else:
-    label = {"open": "Open", "ok": "Done", "bad": "Rejected"}
-    for a in activity:
-        status = a.get("status", "open")
-        a1, a2, a3 = st.columns([0.9, 5, 1.2])
-        a1.caption(a.get("when", ""))
-        a2.markdown(f"**{a.get('who', '')}** · {a.get('what', '')}")
-        a3.markdown(
-            f'<span class="iw-pill {status}">{label.get(status, status.title())}</span>',
-            unsafe_allow_html=True,
-        )
-
+    st.caption(f"Demo workspace: sample history was loaded on {stats['seeded_at']} UTC and comes back automatically "
+               "if the free host restarts.")
 theme.ai_banner()
-
-with st.expander("System status"):
-    h = services.health()
-    labels = [("db", "Database"), ("brand_kit", "Brand kit loaded"), ("seeded", "Demo data loaded"),
-              ("gemini_key", "Gemini key configured (AI review on)"), ("visual_checks", "Visual checks available")]
-    for key, label in labels:
-        st.write(f"{'OK' if h.get(key) else 'Off'} · {label}")
-    if not h.get("gemini_key"):
-        st.caption("Without a Gemini key the app still runs: rule checks (terminology, expired facts, readability) work offline.")

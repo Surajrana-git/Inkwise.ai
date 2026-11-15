@@ -11,8 +11,7 @@ import theme
 st.set_page_config(page_title="inkwise.ai", page_icon="✒️", layout="wide")
 theme.render_shell()
 
-st.title("Knowledge Base")
-st.caption("The brand rules every review is checked against.")
+theme.page_header("Brand kit", "Brand kit", "The guidelines, approved facts and glossary every review is checked against.")
 
 try:
     kb = services.get_knowledge_base()

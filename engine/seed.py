@@ -33,7 +33,7 @@ SEED_FILE = ROOT / "data" / "seed" / "decisions.json"
 # Guidelines whose findings reviewers keep overriding in the demo (come out "likely unclear")
 UNCLEAR = {"G02": "rejected", "G12": "edited", "G13": "rejected"}
 CREATORS = ("asha", "dev", "priya")
-APPROVERS = ("meera", "ravi")
+APPROVERS = ("meera",)   # only the Manager signs off; Ravi (Admin) runs facts
 
 
 def _ts(days_ago: float, hour: int = 10, minute: int = 0) -> str:
@@ -97,15 +97,20 @@ def _builtin() -> list[dict]:
                              "fact_owner": f.owner, "freshness": "expired"})
         status = "pending" if i >= 12 else ("rejected" if i % 5 == 3 else "approved")
         subs.append({"title": title, "author": author, "days_ago": days_ago, "text": " ".join(sentences),
-                     "status": status, "decided_by": APPROVERS[i % 2],
+                     "status": status, "decided_by": APPROVERS[i % len(APPROVERS)],
                      "comment": "Please fix the fee wording before this goes out." if status == "rejected" else "Good to go.",
                      "findings": findings})
     return subs
 
 
 def _insert(sub: dict) -> int:
-    created = _ts(sub["days_ago"], 9 + int(sub["days_ago"] * 3) % 8, int(sub["days_ago"] * 17) % 60)
-    decided = _ts(sub["days_ago"] - 0.1, 15, int(sub["days_ago"] * 23) % 60)
+    base = datetime.now(timezone.utc) - timedelta(days=sub["days_ago"])
+    base = base.replace(hour=9 + int(sub["days_ago"] * 3) % 6, minute=int(sub["days_ago"] * 17) % 60, second=0)
+    iso = lambda t: t.isoformat(timespec="seconds")
+    created = iso(base)
+    checked = iso(base + timedelta(minutes=1))
+    decided = iso(base + timedelta(hours=3, minutes=int(sub["days_ago"] * 7) % 50))
+    decision_times = [iso(base + timedelta(minutes=6 + 3 * k)) for k in range(len(sub["findings"]))]
     status = {"approved": "approved", "rejected": "changes_requested", "pending": "in_review"}[sub["status"]]
     with wf._conn() as con:
         cur = con.execute("INSERT INTO content (title, author, status, created_at, updated_at, decided_by, decided_at, "
@@ -123,13 +128,13 @@ def _insert(sub: dict) -> int:
             con.execute("INSERT INTO findings (content_id, version, finding_id, category, source_id, status, data) "
                         "VALUES (?,?,?,?,?,?,?)",
                         (cid, 1, f["id"], f["category"], f["source_id"], f.get("status", "open"), json.dumps(data)))
-        wf._log(con, cid, "inkwise-ai", "reviewed", f"v1 · {len(sub['findings'])} findings (seeded demo)", at=created)
-        for f in sub["findings"]:
+        wf._log(con, cid, "inkwise-ai", "reviewed", f"v1 · {len(sub['findings'])} findings (seeded demo)", at=checked)
+        for k, f in enumerate(sub["findings"]):
             st = f.get("status", "open")
             if st == "open":
                 continue
             who = f.get("decided_by", sub["author"])
-            at = _ts(sub["days_ago"] - 0.02, 11, int(sub["days_ago"] * 31) % 60)
+            at = decision_times[k]
             con.execute("INSERT INTO decisions (content_id, version, finding_id, source_id, category, status, user, note, at) "
                         "VALUES (?,?,?,?,?,?,?,?,?)",
                         (cid, 1, f["id"], f["source_id"], f["category"], st, who, f.get("note", ""), at))
