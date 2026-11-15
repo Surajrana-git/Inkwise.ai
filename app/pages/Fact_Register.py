@@ -14,9 +14,7 @@ st.set_page_config(page_title="inkwise.ai", page_icon="✒️", layout="wide")
 theme.render_shell()
 ss = st.session_state
 
-st.title("Fact Register")
-st.caption("Approved facts with an owner and an expiry date. Expired facts are flagged in every review "
-           "until the owner re-verifies them.")
+theme.page_header("Fact freshness", "Fact Register", "Approved facts with an owner and an expiry date. Expired facts are flagged in every review until their owner re-verifies them.")
 
 LABEL = {"expired": ("Expired", "bad"), "expiring_soon": ("Expiring soon", "open"), "valid": ("Valid", "ok")}
 
@@ -83,8 +81,11 @@ if role == "Creator" and not ss.get("team"):
     st.info("Renewals are made by the team that owns a fact, or by an admin. You can read the register and see who to ask.")
 
 at_risk = [f for f in facts if f["status"] != "valid"] or facts
-pick = st.selectbox("Fact", [f"{f['id']} · {f['statement'][:80]}" for f in at_risk])
-fact = at_risk[[f"{f['id']} · {f['statement'][:80]}" for f in at_risk].index(pick)]
+options = {f"{f['id']} · {f['statement'][:80]}": f for f in at_risk}
+if ss.get("fr_pick") not in options:      # e.g. the fact was just renewed and left the at-risk list
+    ss.pop("fr_pick", None)
+pick = st.selectbox("Fact", list(options), key="fr_pick")
+fact = options.get(pick) or at_risk[0]
 allowed = services.can_renew(user, role, fact["owner"])
 
 with st.container(border=True):
@@ -95,6 +96,17 @@ with st.container(border=True):
     if fact["renewed_by"]:
         st.caption(f"Last renewed {fact['renewed_at']} UTC by {fact['renewed_by']}"
                    + (f" · “{fact['renew_note']}”" if fact["renew_note"] else ""))
+    try:
+        impact = services.renew_impact(fact["id"])
+    except Exception:
+        impact = {"drafts": [], "findings": 0}
+    if impact["drafts"]:
+        names = ", ".join(f"“{d['title']}” ({d['author']})" for d in impact["drafts"][:5])
+        more = f" and {len(impact['drafts']) - 5} more" if len(impact["drafts"]) > 5 else ""
+        st.info(f"Renewing will re-check {len(impact['drafts'])} open draft(s) that cite {fact['id']} "
+                f"({impact['findings']} finding(s)): {names}{more}.")
+    else:
+        st.caption(f"No open drafts cite {fact['id']} right now, so renewing changes no current review.")
     if not allowed:
         st.caption(f"Only {fact['owner']} or an admin can renew this fact. Sign in as `ravi` (Admin) to try it.")
     with st.form(f"renew_{fact['id']}", clear_on_submit=True):

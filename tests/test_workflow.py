@@ -70,7 +70,7 @@ def test_cannot_approve_with_open_findings_without_comment():
 
 def test_approved_content_is_locked():
     cid = reviewed_item()
-    wf.approve(cid, "meera", "admin", approved=True, comment="ok")
+    wf.approve(cid, "meera", "manager", approved=True, comment="ok")
     with pytest.raises(wf.WorkflowError, match="locked"):
         wf.add_version(cid, "new text", "asha")
 

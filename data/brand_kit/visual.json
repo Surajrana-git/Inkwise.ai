@@ -1,0 +1,46 @@
+{
+  "palette": [
+    {
+      "name": "Lumora Teal",
+      "hex": "#12917F"
+    },
+    {
+      "name": "Lumora Navy",
+      "hex": "#1B2A4E"
+    },
+    {
+      "name": "Logo Teal (shade)",
+      "hex": "#126B66"
+    },
+    {
+      "name": "Deep Navy",
+      "hex": "#0D1A31"
+    },
+    {
+      "name": "Mint",
+      "hex": "#3FD0B6"
+    },
+    {
+      "name": "Soft Teal",
+      "hex": "#E8F6F2"
+    },
+    {
+      "name": "Paper",
+      "hex": "#F7F5F0"
+    }
+  ],
+  "rules": [
+    {
+      "id": "V01",
+      "title": "Use the Lumora palette",
+      "rule": "Campaign creatives use the Lumora palette (Teal #12917F, Navy #1B2A4E, Deep Navy #0D1A31, Mint #3FD0B6, Soft Teal #E8F6F2, Paper #F7F5F0) plus white, black and greys. No more than 3% of an image may use another colour.",
+      "max_off_brand_share": 0.03
+    },
+    {
+      "id": "V02",
+      "title": "Text must be readable",
+      "rule": "Text in an image needs a contrast ratio of at least 4.5:1 against its background (WCAG 2.1 AA), so everyone can read it.",
+      "min_contrast": 4.5
+    }
+  ]
+}
