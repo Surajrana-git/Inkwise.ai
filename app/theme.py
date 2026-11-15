@@ -738,6 +738,25 @@ SHELL_CSS = f"""
 .st-key-iw_footer [data-testid="stPageLink"] a p {{ font-size:.8rem !important; color:rgba(255,255,255,.72) !important; font-weight:400 !important; }}
 .st-key-iw_footer [data-testid="stPageLink"] a:hover p {{ color:#fff !important; }}
 .st-key-iw_footer [data-testid="stPageLink"] {{ margin-bottom:-6px; }}
+.iw-team-h {{ display:flex; align-items:baseline; gap:12px; margin:26px 0 12px; padding-top:22px;
+  border-top:1px solid rgba(255,255,255,.08); }}
+.iw-team-h span {{ font-size:.66rem; letter-spacing:.16em; font-weight:700; color:#7FE6D2; }}
+.iw-team-h b {{ font-size:1rem; color:#fff; font-weight:650; }}
+.iw-team-grid {{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; }}
+.iw-tm {{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:14px 14px 12px;
+  display:flex; flex-direction:column; transition:border-color .15s ease, background-color .15s ease; }}
+.iw-tm:hover {{ border-color:rgba(63,208,182,.45); background:rgba(255,255,255,.06); }}
+.iw-tm-top {{ display:flex; gap:10px; align-items:center; }}
+.iw-tm-top i {{ font-style:normal; width:38px; height:38px; border-radius:50%; flex:none; display:flex; align-items:center;
+  justify-content:center; background:#3FD0B6; color:#0D1A31; font-weight:700; font-size:.78rem; }}
+.iw-tm-top b {{ display:block; color:#fff; font-size:.92rem; font-weight:650; }}
+.iw-tm-top small {{ display:block; color:#7FE6D2; font-size:.72rem; }}
+.iw-tm p {{ font-size:.76rem; line-height:1.5; color:rgba(255,255,255,.66); margin:10px 0 10px; flex:1; }}
+.iw-tm-l {{ display:flex; gap:8px; flex-wrap:wrap; }}
+.iw-tm-l a {{ font-size:.72rem; font-weight:600; color:#fff !important; text-decoration:none !important; padding:4px 10px;
+  border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05); }}
+.iw-tm-l a:hover {{ border-color:#3FD0B6; background:rgba(63,208,182,.14); }}
+@media (max-width: 900px) {{ .iw-team-grid {{ grid-template-columns:repeat(2, minmax(0, 1fr)); }} }}
 .iw-ft-legal {{ display:flex; flex-wrap:wrap; gap:6px 18px; font-size:.7rem; color:rgba(255,255,255,.5);
   border-top:1px solid rgba(255,255,255,.08); margin-top:22px; padding:14px 0 18px; }}
 .iw-ft-legal b {{ color:rgba(255,255,255,.8); font-weight:600; }}
@@ -930,6 +949,37 @@ FOOTER_TRUST = ["Every finding cites its source", "Facts with owners and expiry 
                 "Personal data masked before AI", "Full audit trail"]
 
 
+def _team() -> dict:
+    try:
+        return json.loads((APP_DIR.parent / "data" / "team.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {"team": "DECODIANS", "members": []}
+
+
+def _safe_url(u: str) -> str:
+    u = (u or "").strip()
+    return html.escape(u, quote=True) if u.startswith(("https://", "http://")) else ""
+
+
+def team_html() -> str:
+    """'Meet the team' cards: name, role, what they built, LinkedIn / GitHub (shown only when filled in)."""
+    t = _team()
+    cards = []
+    for m in t.get("members", []):
+        links = "".join(
+            f'<a href="{url}" target="_blank" rel="noopener noreferrer">{label} ↗</a>'
+            for label, url in (("LinkedIn", _safe_url(m.get("linkedin"))), ("GitHub", _safe_url(m.get("github")))) if url)
+        cards.append(
+            f'<div class="iw-tm"><div class="iw-tm-top"><i>{html.escape(_initials(m.get("name", "")))}</i>'
+            f'<div><b>{html.escape(m.get("name", ""))}</b><small>{html.escape(m.get("role", ""))}</small></div></div>'
+            f'<p>{html.escape(m.get("built", ""))}</p>'
+            + (f'<div class="iw-tm-l">{links}</div>' if links else "") + "</div>")
+    if not cards:
+        return ""
+    return (f'<div class="iw-team-h"><span>MEET THE TEAM</span><b>Team {html.escape(t.get("team", ""))}</b></div>'
+            f'<div class="iw-team-grid">{"".join(cards)}</div>')
+
+
 def footer() -> None:
     """Navy footer at the bottom of every signed-in page."""
     def link(page, label):
@@ -961,6 +1011,7 @@ def footer() -> None:
             link("pages/Help.py", "Methodology and AI disclosure")
             link("pages/Insights.py" if st.session_state.get("role") in ("Manager", "Admin") else "pages/Help.py",
                  "Guideline insights" if st.session_state.get("role") in ("Manager", "Admin") else "Known limitations")
+        st.markdown(team_html(), unsafe_allow_html=True)
         st.markdown('<div class="iw-ft-legal"><span>© 2026 <b>Inkwise.ai</b></span>'
                     '<span>Lumora is a fictional brand; all data is synthetic</span>'
                     '<span>AI findings are suggestions, never automatic edits</span>'
