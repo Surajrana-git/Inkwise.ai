@@ -102,15 +102,15 @@ st.subheader("Quick Actions")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("🎨  Manage Branding", use_container_width=True):
+    if st.button("🎨  Manage Branding", width="stretch"):
         st.switch_page("branding.py")
 
 with col2:
-    if st.button("✅  Review Approvals", use_container_width=True):
+    if st.button("✅  Review Approvals", width="stretch"):
         st.switch_page("_Approvals.py")
 
 with col3:
-    if st.button("📚  Knowledge Base", use_container_width=True):
+    if st.button("📚  Knowledge Base", width="stretch"):
         st.switch_page("_Knowledge_Base.py")
 
 st.write("")

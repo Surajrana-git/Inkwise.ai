@@ -141,7 +141,7 @@ with tab_t:
     else:
         df = pd.DataFrame(glossary).rename(
             columns={"id": "ID", "avoid": "Avoid", "use": "Use instead", "note": "Note"})
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
 
 with tab_v:
     st.markdown('<div style="font-size:.86rem;color:#5A6480;margin:2px 0 6px">The Lumora palette. White, black and '
