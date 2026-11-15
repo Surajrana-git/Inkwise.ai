@@ -11,13 +11,14 @@ import theme
 
 st.set_page_config(page_title="inkwise.ai", layout="wide")
 
-SPLASH_SECONDS = 1.2
+SPLASH_SECONDS = 0.8
 
 PAGE_REVIEW = "pages/1_Review.py"
 PAGE_APPROVALS = "pages/Approvals.py"
 
 
 def splash() -> None:
+    theme.persist_css({"iw-boot": theme.BOOT_CSS})       # navy stays while the sign-in page loads
     st.markdown(
         f"""
         <style>
