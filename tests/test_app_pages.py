@@ -175,7 +175,9 @@ def test_landing_shows_journey_and_all_drafts_with_trail():
     at = run("app/pages/1_Review.py", {**ASHA, "landed_for": "asha"})
     assert {"Go as Asha", "Go as Meera", "Go as Ravi"} <= set(labels(at))
     assert any("APPROVED / RETURNED BY" in m.value for m in at.markdown)
-    assert any('class="tl"' in m.value and "ran the Inkwise check" in m.value for m in at.markdown)
+    assert any('class="tr-list"' in m.value and "ran the Inkwise check" in m.value for m in at.markdown)
+    md = " ".join(m.value for m in at.markdown)
+    assert 'class="tr-steps"' in md and "Created" in md and "Checked" in md and "Decided" in md
     at.button(key="j_hide").click().run()
     assert "Go as Meera" not in labels(at)
     at.selectbox(key="dr_filter").set_value("Approved").run()
@@ -472,6 +474,7 @@ def test_footer_meet_the_team_with_safe_links():
     for name in ("Suraj Kumar", "Riyana S", "Aashi Yadav", "Pritha S"):
         assert name in out
     assert 'href="https://github.com/Surajrana-git" target="_blank" rel="noopener noreferrer"' in out
+    assert "BUILT BY <b>DECODIANS</b>" in out and out.count("<svg") == 8          # 4 x LinkedIn + 4 x GitHub
     assert theme._safe_url("javascript:alert(1)") == "" and theme._safe_url("") == ""
     at = run("app/pages/Help.py", ASHA)
-    assert "MEET THE TEAM" in " ".join(m.value for m in at.markdown)
+    assert "BUILT BY" in " ".join(m.value for m in at.markdown)
