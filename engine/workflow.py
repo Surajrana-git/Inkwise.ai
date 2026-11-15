@@ -725,11 +725,27 @@ def guideline_stats(date_from=None, date_to=None, role: Optional[str] = None) ->
     return out
 
 
+# Team of each demo author (the users table has teams only for the three sign-in accounts).
+AUTHOR_TEAMS = {"asha": "Comms team", "dev": "Growth marketing", "priya": "Partnerships"}
+
+
+def team_of(author: str) -> str:
+    try:
+        with _conn() as con:
+            row = con.execute("SELECT team FROM users WHERE username = ?", (author,)).fetchone()
+        if row and row["team"]:
+            return row["team"]
+    except Exception:
+        pass
+    return AUTHOR_TEAMS.get(author, "No team")
+
+
 def repeat_issues(group_by: str = "category", date_from=None, date_to=None) -> list[dict]:
     """Issues that keep coming back.
 
     group_by='category': count of findings per category with how many creators raise it.
-    group_by='creator' : (author, category, count) pairs at or above REPEAT_MIN_COUNT.
+    group_by='creator' : (author, category, count) pairs, repeat if at or above REPEAT_MIN_COUNT.
+    group_by='team'    : (team, category, count, creators) pairs, same threshold.
     """
     lo, hi = _range(date_from, date_to)
     with _conn() as con:
@@ -742,6 +758,17 @@ def repeat_issues(group_by: str = "category", date_from=None, date_to=None) -> l
                for r in rows]
         out.sort(key=lambda d: (-d["count"], d["creator"]))
         return out
+    if group_by == "team":
+        teams: dict[tuple, dict] = {}
+        for r in rows:
+            t = teams.setdefault((team_of(r["author"]), r["category"]),
+                                 {"team": team_of(r["author"]), "category": r["category"], "count": 0, "creators": set()})
+            t["count"] += r["n"]
+            t["creators"].add(r["author"])
+        out = [{"team": v["team"], "category": v["category"], "count": v["count"], "creators": len(v["creators"]),
+                "repeat": v["count"] >= REPEAT_MIN_COUNT} for v in teams.values()]
+        out.sort(key=lambda d: (-d["count"], d["team"]))
+        return out
     cats: dict[str, dict] = {}
     for r in rows:
         c = cats.setdefault(r["category"], {"category": r["category"], "count": 0, "creators": set()})
@@ -750,6 +777,51 @@ def repeat_issues(group_by: str = "category", date_from=None, date_to=None) -> l
     out = [{"category": k, "count": v["count"], "creators": len(v["creators"])} for k, v in cats.items()]
     out.sort(key=lambda d: -d["count"])
     return out
+
+
+def review_times(date_from=None, date_to=None) -> dict:
+    """How long reviews take, measured from the audit log (minutes, medians over decided drafts).
+
+    check:    created -> Inkwise check finished
+    creator:  check -> the creator's last finding decision (accept / edit / reject)
+    signoff:  last creator decision -> manager approved or sent back
+    total:    created -> manager decision
+    """
+    lo, hi = _range(date_from, date_to)
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT a.content_id, a.action, a.at FROM audit_log a JOIN content c ON c.id = a.content_id "
+            "WHERE c.created_at BETWEEN ? AND ? ORDER BY a.id", (lo, hi)).fetchall()
+    per: dict[int, dict] = {}
+    for r in rows:
+        d = per.setdefault(r["content_id"], {})
+        t = datetime.fromisoformat(r["at"])
+        act = r["action"]
+        if act == "created":
+            d.setdefault("created", t)
+        elif act == "reviewed":
+            d.setdefault("reviewed", t)
+        elif act.startswith("finding_"):
+            d["decided"] = t
+        elif act in ("approved", "changes_requested"):
+            d.setdefault("signoff", t)
+
+    def med(vals):
+        vals = sorted(v for v in vals if v is not None and v >= 0)
+        if not vals:
+            return None
+        m = len(vals) // 2
+        return round(vals[m] if len(vals) % 2 else (vals[m - 1] + vals[m]) / 2, 1)
+
+    def gap(d, a, b):
+        return (d[b] - d[a]).total_seconds() / 60 if a in d and b in d else None
+
+    done = [d for d in per.values() if "signoff" in d]
+    return {"drafts": len(done),
+            "check": med(gap(d, "created", "reviewed") for d in per.values()),
+            "creator": med(gap(d, "reviewed", "decided") for d in per.values()),
+            "signoff": med(gap(d, "decided", "signoff") for d in done),
+            "total": med(gap(d, "created", "signoff") for d in done)}
 
 
 _REWORD_PROMPT = """You help a brand team write clearer content guidelines.

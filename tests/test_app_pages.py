@@ -401,3 +401,36 @@ def test_fact_renewal_confirmation_survives_the_refresh():
     at.button[labels(at).index("Renew and re-check open drafts")].click().run()
     assert not at.exception
     assert any("now expires on" in s.value for s in at.success)       # was wiped by st.rerun() before
+
+
+def test_open_source_in_brand_kit_from_a_finding():
+    at = run("app/pages/1_Review.py", {**ASHA, "landed_for": "asha"})
+    at.text_area(key="rv_text").input("Open LumoraPay today. Lumora Pay has 2 million registered users.").run()
+    at.button(key="rv_run").click().run()
+    f = next(x for x in at.session_state["rv_findings"] if x["source_id"] == "F01")
+    at.session_state["rv_focus"] = f["id"]
+    at.run()
+    at.button(key=f"src_{f['id']}").click().run()
+    assert at.session_state["kb_focus"] == "F01"
+    kb = run("app/pages/Knowledge_Base.py", {**ASHA, "kb_focus": "F01"})
+    md = " ".join(m.value for m in kb.markdown)
+    assert "OPENED FROM A FINDING · APPROVED FACT" in md and "2 million registered users" in md and "Owner:" in md
+    kb.button(key="kb_close").click().run()
+    assert "kb_focus" not in kb.session_state
+    assert "OPENED FROM A FINDING" not in " ".join(m.value for m in kb.markdown)
+
+
+def test_brand_kit_lists_image_rules_and_palette():
+    kb = run("app/pages/Knowledge_Base.py", ASHA)
+    md = " ".join(m.value for m in kb.markdown)
+    assert "V01" in md and "V02" in md and "V03" in md and "#12917F" in md
+
+
+def test_insights_shows_review_times_and_team_view():
+    at = run("app/pages/Insights.py", MEERA)
+    md = " ".join(m.value for m in at.markdown)
+    assert "How long reviews take" in md and "End to end, draft to decision" in md
+    at.selectbox(key=None) if False else None
+    sel = next(s for s in at.selectbox if s.label == "Repeat issues by")
+    sel.set_value("Team").run()
+    assert not at.exception and "Repeat issues by team" in " ".join(m.value for m in at.markdown)

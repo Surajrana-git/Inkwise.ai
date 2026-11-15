@@ -1,0 +1,30 @@
+{"id": "fx01", "today": "2026-11-15", "text": "Join 2 million happy Lumora Pay users today.", "expect": [["F01", "expired"]], "why": "same figure, same words"}
+{"id": "fx02", "today": "2026-11-15", "text": "Join 20 lakh happy Lumora Pay users today.", "expect": [["F01", "expired"]], "why": "lakh"}
+{"id": "fx03", "today": "2026-11-15", "text": "Over 2M registered users already trust Lumora Pay.", "expect": [["F01", "expired"]], "why": "2M, 'over'"}
+{"id": "fx04", "today": "2026-11-15", "text": "Lumora Pay has two million registered users.", "expect": [["F01", "expired"]], "why": "number words"}
+{"id": "fx05", "today": "2026-11-15", "text": "Lumora Pay has 2,000,000 registered users.", "expect": [["F01", "expired"]], "why": "thousands separators"}
+{"id": "fx06", "today": "2026-11-15", "text": "Lumora Pay now has 2.1M registered users.", "expect": [["F01", "expired"]], "why": "rounded (within 10%)"}
+{"id": "fx07", "today": "2026-11-15", "text": "Nearly 1.9 million users are registered on Lumora Pay.", "expect": [["F01", "expired"]], "why": "rounded down"}
+{"id": "fx08", "today": "2026-11-15", "text": "Lumora customers made 50 lakh transfers in Q1 2026.", "expect": [["F04", "expired"]], "why": "lakh, year not counted"}
+{"id": "fx09", "today": "2026-11-15", "text": "Lumora customers made 0.5 crore transfers in Q1 2026.", "expect": [["F04", "expired"]], "why": "crore"}
+{"id": "fx10", "today": "2026-11-15", "text": "Send money in 12 currencies with Lumora Pay transfers.", "expect": [["F02", "expired"]], "why": "small count, exact"}
+{"id": "fx11", "today": "2026-11-15", "text": "Send money in twelve currencies with Lumora Pay transfers.", "expect": [["F02", "expired"]], "why": "small count in words"}
+{"id": "fx12", "today": "2026-11-15", "text": "The Lumora app is rated 4.8 out of 5 on average.", "expect": [["F03", "expired"]], "why": "decimal rating is one number"}
+{"id": "fx13", "today": "2026-11-15", "text": "Lumora Pay is available in 8 markets.", "expect": [["F07", "expired"]], "why": "small count"}
+{"id": "fx14", "today": "2026-11-15", "text": "Lumora Pay is available in eight markets across Asia.", "expect": [["F07", "expired"]], "why": "small count in words"}
+{"id": "fx15", "today": "2026-11-15", "text": "Onboarding with Lumora took under 6 minutes on average in Q1 2026.", "expect": [["F08", "expired"]], "why": "minutes"}
+{"id": "fx16", "today": "2026-11-15", "text": "Join 2 million Lumora Pay users. Yes, 2 million registered users and counting!", "expect": [["F01", "expired"], ["F01", "expired"]], "why": "every occurrence"}
+{"id": "fx17", "today": "2026-11-15", "text": "Our 20 lakh registered users love Lumora Pay. Lumora Pay is live in 8 markets.", "expect": [["F01", "expired"], ["F07", "expired"]], "why": "two different expired facts"}
+{"id": "fx18", "today": "2026-08-15", "text": "Lumora Pay has 2 million registered users.", "expect": [], "why": "not expired yet and more than 30 days left (expires 2026-09-30)"}
+{"id": "fx19", "today": "2026-09-10", "text": "Lumora Pay has 2 million registered users.", "expect": [["F01", "expiring_soon"]], "why": "expires in 20 days"}
+{"id": "fx20", "today": "2027-03-10", "text": "Download a monthly activity statement from the Lumora app.", "expect": [], "why": "no figure in the fact (F12) means nothing to compare; handled by AI claim checks"}
+{"id": "fx21", "today": "2026-08-20", "text": "Lumora Pay is now available in 8 markets.", "expect": [["F07", "expired"]], "why": "F07 expired on 2026-08-15, five days earlier"}
+{"id": "fx22", "today": "2026-11-15", "text": "Lumora Pay has 3 million registered users.", "expect": [], "why": "different figure: not the approved fact (an unsupported claim, for the AI)"}
+{"id": "fx23", "today": "2026-11-15", "text": "The Lumora app is rated 4.5 out of 5.", "expect": [], "why": "different rating"}
+{"id": "fx24", "today": "2026-11-15", "text": "We launched Lumora Pay in 2026 for everyone.", "expect": [], "why": "a year is not a figure"}
+{"id": "fx25", "today": "2026-11-15", "text": "Our team of 2 million volunteers planted trees.", "expect": [], "why": "same figure, unrelated topic"}
+{"id": "fx26", "today": "2026-11-15", "text": "Save up to 40% on fees this month.", "expect": [], "why": "no fact about 40%"}
+{"id": "fx27", "today": "2026-11-15", "text": "Lumora support is there for you every day.", "expect": [], "why": "F06 has no figure to match; left to AI"}
+{"id": "fx28", "today": "2026-11-15", "text": "Customers can review any displayed fee before confirming a transfer.", "expect": [], "why": "F20 is valid"}
+{"id": "fx29", "today": "2026-11-15", "text": "Lumora customers made 5 million transfers in Q1 2026 and 2 million users joined.", "expect": [["F04", "expired"]], "why": "one sentence, best match wins"}
+{"id": "fx30", "today": "2026-11-15", "text": "Lumora Pay has 2.5 million registered users.", "expect": [], "why": "25% away: a different figure"}
