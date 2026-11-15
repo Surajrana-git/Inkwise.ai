@@ -2,16 +2,16 @@
 
 How we know Inkwise works, and how to check it yourself.
 
-## 1. Automated tests: 194
+## 1. Automated tests: 206
 
 `pytest` runs every test headless, against a temporary database, with no Gemini key, so the rule checks and the
 whole workflow are exercised exactly as a judge would meet them offline.
 
 | File | What it proves |
 |---|---|
-| `tests/test_app_pages.py` | Every page loads for every role; the full journeys: check → accept / edit / reject → send → approve or send back; landing sign-in, user switch, sign out; Help search and guides; History filters and PDF; Brand Kit source focus; Insights team view and review times; image upload and annotated approvals |
+| `tests/test_app_pages.py` | Every page loads for every role, and each person only sees their own workspace (another person's page explains whose it is); the full journeys: check → accept / edit / reject → send → approve or send back; landing sign-in, user switch, sign out; Help search and guides; History filters and PDF; Brand Kit source focus; Insights team view and review times; image upload and annotated approvals |
 | `tests/test_workflow.py`, `tests/test_workflow_r3.py` | Roles, versions, decisions, idempotent approve / submit, no self-approval, Admin cannot sign off, fact register and renewals, insights and thresholds, review times, repeat issues by team |
-| `tests/test_rules.py`, `tests/test_fact_freshness.py` | Glossary, readability, expired and expiring facts, every number format (lakh, crore, 2M, words, rounding), years ignored, decimals kept inside sentences, the planted-fact group at 100% |
+| `tests/test_rules.py`, `tests/test_fact_freshness.py`, `tests/test_claims_rule.py` | Glossary, readability, expired and expiring facts, every number format (lakh, crore, 2M, words, rounding), years ignored, decimals kept inside sentences, the planted-fact group at 100%; unsupported superlatives and "instant" promises cite G07 unless a current fact backs them |
 | `tests/test_review.py`, `tests/test_evidence.py`, `tests/test_engine_fixes.py` | Gemini prompt and parsing, backup models, 429 retry, hung-call deadline, evidence verification (UNVERIFIED when the quote is not in the source), per-claim retrieval |
 | `tests/test_visual.py` | Palette, WCAG contrast (line-based and no-AI estimate), logo answer, text-in-image runs the copy rules, no false alarms on photos / logo / a clean on-brand card, bad and huge images refused |
 | `tests/test_documents.py` | PDF, Word (with tables) and text import; long files cut to the limit; scanned PDFs, .doc, empty and broken files get a plain message |
