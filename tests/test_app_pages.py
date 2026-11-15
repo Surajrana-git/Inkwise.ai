@@ -494,3 +494,9 @@ def test_refresh_keeps_the_demo_person_signed_in_and_sign_out_clears_it():
     bad.query_params["as"] = "nobody"                   # only demo accounts can be restored
     bad.run()
     assert not (bad.session_state["auth"] if "auth" in bad.session_state else False)
+
+
+def test_help_answers_cover_notifications_import_and_refresh():
+    at = run("app/pages/Help.py", ASHA)
+    qs = [e.label for e in at.expander]
+    assert {"How do notifications work?", "Can I check a PDF or Word file?", "What happens if I refresh the page?"} <= set(qs)

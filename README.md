@@ -46,6 +46,8 @@ All data is synthetic: **Lumora** is a fictional fintech brand written by the te
 5. **Audit:** History has every draft with who decided what and when, a **PDF audit report** per draft and CSV export.
 6. **Improve:** Insights shows guidelines people keep overriding, repeat issues by category, creator or team, and how
    long each review stage takes.
+7. **Stay informed:** a notification bell tells a Manager when a draft arrives, the creator when it is approved or sent
+   back, and an Admin when a fact expires. A browser refresh keeps you signed in on the same page.
 
 ## The three Round 3 improvements (committed in Round 2)
 
@@ -105,7 +107,7 @@ app/             Streamlit pages: Home, Review, Approvals, Fact Register, Insigh
 data/brand_kit/  Lumora guidelines (15), facts (20), glossary (15), image rules and palette
 eval/            labelled sets, fact-freshness group, evaluation scripts and results
 docs/            delivery, architecture, testing, responsible design, limitations and roadmap, deploy, disclosures
-tests/           189 automated tests
+tests/           194 automated tests
 ```
 
 ## Run locally
@@ -116,7 +118,7 @@ source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt        # macOS with Python 3.9: pip install "cryptography<45" first
 cp .env.example .env                   # add GEMINI_API_KEY (optional: every rule check works without it)
 streamlit run app/Home.py
-pytest                                 # 189 tests
+pytest                                 # 194 tests
 ```
 
 ## Documentation

@@ -56,6 +56,7 @@ and how to check it. Status: ✅ delivered · ⚠️ delivered with a stated gap
 
 ## Beyond the commitments
 
-Help Centre with guides and FAQ, audit-report PDFs, redesigned Approvals (readiness checks, Manager-only sign-off, no
+Notifications for every role (bell and pop-ups), sign-in that survives a refresh, a Help Centre with guides and FAQ,
+audit-report PDFs, a draft trail timeline, redesigned Approvals (readiness checks, Manager-only sign-off, no
 self-approval), live tracked changes and Final copy on Review, and image findings boxed on the creative. Every status in
 the UI has a text label as well as a colour.
