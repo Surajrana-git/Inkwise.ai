@@ -67,7 +67,8 @@ TOPICS = [
     {"key": "check", "icon": "✎", "bg": "#E8F6F2", "title": "Check a draft",
      "sub": "Paste copy or load a sample, then run the pre-publication check.",
      "page": "pages/1_Review.py", "as": "asha",
-     "steps": ["Open Review. Pick a sample draft (for example “Launch post”) or paste your own copy, up to 12,000 characters.",
+     "steps": ["Open Review. Pick a sample draft (for example “Launch post”), paste your own copy, or import a PDF or "
+               "Word file (up to 12,000 characters).",
                "Optionally add the campaign image, or press “Use sample banner”.",
                "Press “Run pre-publication check”. Rule checks run first; Gemini then looks for claims, tone and "
                "messaging issues, limited to the guidelines it is shown.",
@@ -89,7 +90,8 @@ TOPICS = [
      "steps": ["Sign in as Meera (Manager) and open Approvals. The queue shows each draft as “Ready” or “Needs a look”.",
                "Readiness checks show whether every finding was decided and whether any expired fact or unsupported "
                "claim was kept.",
-               "Read the Changes or Final copy view and the table of what the creator decided.",
+               "Read the Changes or Final copy view and the table of what the creator decided. The bell (top right) "
+               "tells you when a new draft arrives.",
                "Approve, or Send back with a comment (a comment is required so the creator knows what to change)."],
      "tip": "Only Managers sign off, and nobody can approve their own draft. Admins look after facts and the brand kit."},
     {"key": "facts", "icon": "◷", "bg": "#FDECEC", "title": "Fact freshness",
@@ -158,11 +160,24 @@ def faq_items() -> list[tuple[str, str]]:
         ("Which demo accounts can I use?",
          "Asha Menon (Creator), Meera Kapoor (Manager) and Ravi Sharma (Admin). Pick one on the sign-in page, or switch "
          "at any time from the name in the top-right corner. No password is needed for the demo accounts."),
-        ("Which files can I check?", "Copy: up to 12,000 characters of text. Images: PNG or JPEG up to 5 MB."),
+        ("Which files can I check?",
+         "Copy: up to 12,000 characters, typed, pasted or imported from a PDF, Word (.docx), .txt or .md file up to "
+         "5 MB. Images: PNG or JPEG up to 5 MB."),
         ("How accurate is it?", acc),
         ("Where is the full record of what happened?",
          "History lists every draft with who wrote it, who decided and when, and lets you download an audit report "
          "as PDF or the whole history as CSV. Review also shows each draft’s timeline."),
+        ("How do notifications work?",
+         "The bell in the top-right corner shows what needs you. A Manager is told when a creator sends a draft "
+         "for approval; the creator is told when it is approved or sent back, with the comment; an Admin is told "
+         "about expired or expiring facts and guidelines that look unclear. New items also pop up once when you "
+         "sign in or switch person, and each one opens the right page."),
+        ("Can I check a PDF or Word file?",
+         "Yes. On Review, use “Import from a PDF, Word or text file”. The text is put in the box so you can edit "
+         "it before the check. Scanned PDFs (pictures of text) and old .doc files are not read; the page says so."),
+        ("What happens if I refresh the page?",
+         "You stay signed in as the same demo person on the same page. A draft you were typing and decisions you "
+         "had not sent yet are not saved, so send for approval before you leave."),
         ("Can I undo a decision?",
          "Yes, before you send it: press another button on the same finding (for example Reject after Accept). "
          "After sending, a Manager can send the draft back with a comment."),

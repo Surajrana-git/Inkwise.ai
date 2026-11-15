@@ -2,7 +2,7 @@
 
 How we know Inkwise works, and how to check it yourself.
 
-## 1. Automated tests: 189
+## 1. Automated tests: 194
 
 `pytest` runs every test headless, against a temporary database, with no Gemini key, so the rule checks and the
 whole workflow are exercised exactly as a judge would meet them offline.
@@ -21,7 +21,7 @@ whole workflow are exercised exactly as a judge would meet them offline.
 ## 2. Every control, clicked
 
 A sweep script opens every page as Creator, Manager and Admin and clicks every button, picks every option of every
-radio, select box and segmented control, one at a time from a fresh page: about **370 controls**, **no errors**.
+radio, select box and segmented control, one at a time from a fresh page: about **370 controls**, **no errors** (repeated on the final build).
 It also times every page load. In the browser, every tab switch is fully drawn in 0.3 to 0.5 seconds.
 
 Problems the sweep and the browser walk-through found, all fixed: the header did not stay pinned when scrolling; a
@@ -47,7 +47,10 @@ rules-only run can never be reported as an AI result (this happened in Round 2 a
   hung network call cannot freeze the page.
 - **Bad input:** empty or over-long text, unreadable images and documents, huge or tiny images, decompression bombs
   all get one plain sentence instead of an error.
-- **Double clicks and refreshes:** submitting, approving and deciding are idempotent.
+- **Double clicks and refreshes:** submitting, approving and deciding are idempotent, and a browser refresh keeps the
+  demo person signed in on the same page.
+- **Screen sizes:** the header and every page were checked at 1100, 1280 and 1440 px wide; nothing clips and the page
+  never scrolls sideways.
 - **Demo samples:** stored AI results for the four sample drafts, so the demo works even when the free tier is exhausted.
 - **No flash between pages:** styles live in the page head and images are served as files, so the design never
   falls back to the default look while a page loads.
