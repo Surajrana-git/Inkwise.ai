@@ -49,7 +49,22 @@ LOGO_CANDIDATES = [
 ROLES = ["Creator", "Manager", "Reviewer", "Admin"]
 
 
+STATIC_DIR = APP_DIR / "static"
+
+
+def static_url(name: str):
+    """URL of app/static/<name> (served by Streamlit, enableStaticServing = true), or None if missing.
+    Images as files keep the page styles small, so the design appears at once (no unstyled flash)."""
+    p = STATIC_DIR / name
+    if not p.exists():
+        return None
+    return f"app/static/{name}?v={int(p.stat().st_mtime)}"
+
+
 def logo_src() -> str:
+    url = static_url("inkwise_logo.jpeg")
+    if url:
+        return url
     for p in LOGO_CANDIDATES:
         if p.exists():
             b64 = base64.b64encode(p.read_bytes()).decode()
@@ -298,6 +313,9 @@ ROLE_INFO = {
 
 
 def icon_src() -> str:
+    url = static_url("logo_icon.png")
+    if url:
+        return url
     p = APP_DIR / "assets" / "logo_icon.png"
     return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode() if p.exists() else logo_src()
 
@@ -310,7 +328,12 @@ def wordmark(dark_bg: bool = True, size: int = 30) -> str:
 
 
 def _contours_svg(stroke: str = "#9FB4D6", scale: float = 1.0) -> str:
-    """Topographic contour lines (deterministic) as an SVG data URI for the navy panel."""
+    """Topographic contour lines (deterministic). Served as a static image when it was built
+    (scripts/build_static_assets.py), otherwise as an inline SVG data URI."""
+    known = {("#9FB4D6", 1.0): "contours_login.webp", ("#1B2A4E", .55): "contours_inner.webp"}
+    url = static_url(known.get((stroke, scale), ""))
+    if url:
+        return url
     import math, urllib.parse
     w, h = 1400, 1000
     centres = [(260, 260, 1.0), (1080, 760, 1.25), (900, 160, .8)]
@@ -330,6 +353,15 @@ def _contours_svg(stroke: str = "#9FB4D6", scale: float = 1.0) -> str:
     return "data:image/svg+xml;utf8," + urllib.parse.quote(svg)
 
 
+def _photo(name: str):
+    """Static URL of a background photo, or an inline data URI if app/static was not built."""
+    url = static_url(name)
+    if url:
+        return url
+    p = APP_DIR / "assets" / name
+    return f"data:image/jpeg;base64,{base64.b64encode(p.read_bytes()).decode()}" if p.exists() else None
+
+
 LOGIN_BG_DEFAULT = "desklines"   # login background: desklines | desksoft | desk | linesfull | lines | ink
 
 
@@ -343,25 +375,22 @@ def _login_bg(choice: str = "") -> str:
                 f'url("{_contours_svg()}") center / cover no-repeat, '
                 "linear-gradient(135deg, #0F1A31 0%, #16264A 55%, #10203A 100%)")
     if choice == "desklines":     # desk photo, soft tint, contour lines drawn over it
-        p = APP_DIR / "assets" / "login_bg_desk.jpg"
-        if p.exists():
-            data = base64.b64encode(p.read_bytes()).decode()
+        photo = _photo("login_bg_desk.jpg")
+        if photo:
             return (f'url("{_contours_svg()}") center / cover no-repeat, '
                     "linear-gradient(90deg, rgba(10,16,32,.80) 0%, rgba(10,16,32,.45) 46%, rgba(10,16,32,.10) 100%), "
-                    f"url(data:image/jpeg;base64,{data}) center / cover no-repeat, #0E1730")
+                    f'url("{photo}") center / cover no-repeat, #0E1730')
     if choice == "desksoft":      # same desk photo, lighter tint so more of the photo shows
-        p = APP_DIR / "assets" / "login_bg_desk.jpg"
-        if p.exists():
-            data = base64.b64encode(p.read_bytes()).decode()
+        photo = _photo("login_bg_desk.jpg")
+        if photo:
             return ("linear-gradient(90deg, rgba(10,16,32,.80) 0%, rgba(10,16,32,.45) 46%, rgba(10,16,32,.10) 100%), "
-                    f"url(data:image/jpeg;base64,{data}) center / cover no-repeat, #0E1730")
-    p = APP_DIR / "assets" / f"login_bg_{choice}.jpg"
-    if choice != "lines" and p.exists():
-        data = base64.b64encode(p.read_bytes()).decode()
+                    f'url("{photo}") center / cover no-repeat, #0E1730')
+    photo = _photo(f"login_bg_{choice}.jpg") if choice != "lines" else None
+    if photo:
         tint = (".90, .78, .42" if choice == "ink" else ".86, .66, .30")
         a1, a2, a3 = [x.strip() for x in tint.split(",")]
         return (f"linear-gradient(90deg, rgba(10,16,32,{a1}) 0%, rgba(10,16,32,{a2}) 46%, rgba(10,16,32,{a3}) 100%), "
-                f"url(data:image/jpeg;base64,{data}) center / cover no-repeat, #0E1730")
+                f'url("{photo}") center / cover no-repeat, #0E1730')
     return ("radial-gradient(ellipse 70% 60% at 20% 30%, rgba(255,255,255,.05), transparent 70%) 0 0 / 52% 100% no-repeat, "
             "radial-gradient(ellipse 90% 90% at 30% 50%, transparent 55%, rgba(5,9,20,.55) 100%) 0 0 / 52% 100% no-repeat, "
             f'url("{_contours_svg()}") 0 0 / 52% 100% no-repeat, '
