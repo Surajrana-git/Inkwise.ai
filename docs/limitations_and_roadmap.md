@@ -5,7 +5,7 @@
 | Limitation | Impact | What we do about it now |
 |---|---|---|
 | AI checks need Gemini, and the free tier can be slow, rate-limited or unreachable | Claims, tone and messaging findings and reading text in images are skipped | Rule checks always run; the page says what was skipped; backup models and hard time limits; stored AI results for the four sample drafts |
-| Citation accuracy with Gemini measured at 83.2% (target 98%) before evidence verification and per-claim retrieval were added | Some AI findings cited a near-miss guideline (mostly G07 / G03 / G12) | Unverifiable quotes now become UNVERIFIED; re-run `python eval/run_eval.py --split test` to measure the new number |
+| Citation accuracy with Gemini is 95.1%, below our 98% target (up from 83.2%) | 7 of 142 correct findings cite a near-miss source, 5 of them the general claims guideline G07 instead of a specific fact | Unverifiable quotes become UNVERIFIED, so a wrong cite never shows invented evidence; next step is tuning on the dev set |
 | Image contrast without AI is an estimate | It may miss small text or, rarely, flag a texture | The finding says "estimated without AI"; with AI, contrast is measured on each located text line |
 | Scanned PDFs and old `.doc` files | No text to check | A clear message asks for a text PDF or `.docx` |
 | Demo sign-in, no real accounts or passwords | Anyone with the link can act as any demo person | Every action is in the audit log; roles are enforced in the engine |
@@ -17,7 +17,7 @@
 ## Roadmap
 
 **Next (first month after the event)**
-- Re-measure citation accuracy with evidence verification and per-claim retrieval; tune on the dev set only.
+- Raise citation accuracy from 95.1% to 98%: prefer a specific fact over G07 when both match; tune on the dev set only.
 - Second user test with five people: time taken per task, where they hesitated, and why.
 - Company sign-in (Google / Microsoft) with the same roles; a managed Postgres database instead of SQLite.
 

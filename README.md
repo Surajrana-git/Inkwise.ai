@@ -70,11 +70,12 @@ for tuning). Every label points to a real brand-kit ID. Details: [eval/README.md
 
 | Setup (test set) | Precision | Recall | Citation accuracy | Clean samples wrongly flagged |
 |---|---:|---:|---:|---:|
-| Rules + Gemini (`eval/results.md`) | 83.5% | 95.8% | 83.2% | 10 / 25 |
+| **Rules + Gemini, current engine** (`eval/results.md`, 100/100 answered) | **88.2%** | **99.3%** | **95.1%** | **5 / 25** |
+| Rules + Gemini, start of Round 3 | 83.5% | 95.8% | 83.2% | 10 / 25 |
 | Rules only, current engine | 95.0% | 53.1% | 97.4% | 2 / 25 |
 
-Recall by type with Gemini: terminology 50/50, claims 23/23, tone 19/20, messaging 11/12, accessibility 11/12,
-outdated facts 23/26 (rules alone now catch 26/26 after the number-matching work).
+Recall by type with Gemini: terminology 50/50, claims 23/23, outdated facts 26/26, messaging 12/12,
+accessibility 12/12, tone 19/20. Remaining wrong citations: G07 (5), F01 (1), T01 (1).
 
 **Fact-freshness test group** (`eval/fact_cases.jsonl`, rules only, fixed dates): **30/30 cases, recall 100%,
 precision 100%**. The previous checker scored 18/30 on the same cases.
