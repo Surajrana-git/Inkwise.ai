@@ -282,6 +282,60 @@ def check_expiring_facts(
     return out
 
 
+# ---------------------------------------------------------------- unsupported claims
+
+CLAIMS_GUIDELINE = "G07"
+
+_SUPERLATIVE = (
+    r"best|fastest|quickest|cheapest|safest|easiest|simplest|smartest|largest|biggest|lowest|highest|"
+    r"most\s+(?:trusted|popular|secure|reliable|advanced|loved|affordable)|leading|top[- ]rated|"
+    r"no\.?\s*1|#\s*1|number\s+one|world[- ]class|unbeatable|unmatched|unrivalled|unrivaled"
+)
+_END = r"[^.,;:!?\n]*"
+# "the best app for managing money", "India's fastest payment app"
+_SUPERLATIVE_RE = re.compile(rf"(?:\b(?:the|our|india's)\s+)?\b(?:{_SUPERLATIVE})\b{_END}", re.I)
+# "Every transfer arrives instantly", "payments always land immediately"
+_ABSOLUTE_RE = re.compile(
+    rf"\b(?:every|all|always|any)\b{_END}\b(?:instantly|immediately|instant|in\s+seconds)\b{_END}", re.I)
+
+
+def check_unsupported_claims(
+    text: str,
+    facts: list[Fact],
+    source: Optional[SourceMatch] = None,
+    today: Optional[date] = None,
+) -> list[Finding]:
+    """Flag superlatives ("the best app") and absolute promises ("every transfer arrives instantly")
+    that no current approved fact supports. Cites the claims guideline, with its own words as evidence.
+
+    A claim is supported when a fact that has not expired uses the same superlative or absolute word and
+    shares a content word with the claim; then nothing is flagged here.
+    """
+    if source is None:
+        return []
+    current = [f for f in facts if not f.is_expired(today)]
+    out: list[Finding] = []
+    taken: list[tuple[int, int]] = []
+    for kind, pattern in (("superlative", _SUPERLATIVE_RE), ("absolute", _ABSOLUTE_RE)):
+        for m in pattern.finditer(text):
+            span = m.group().strip()
+            start, end = m.start(), m.start() + len(span)
+            if len(span.split()) < 2 or any(start < e and s < end for s, e in taken):
+                continue
+            words = _words(span)
+            if any(len(words & _words(f.statement)) >= 2 and pattern.search(f.statement) for f in current):
+                continue                                    # an approved, current fact backs this claim
+            taken.append((start, end))
+            out.append(Finding(
+                id="", category=Category.CLAIM, span=span, source_id=source.source_id,
+                source_text=source.text,
+                why=("This is a superlative with no approved fact behind it." if kind == "superlative"
+                     else "This promises the same result every time, and no approved fact supports that."),
+                suggested_fix="Remove the claim, or replace it with a figure from a current approved fact.",
+                confidence=0.85, checked_by=CheckedBy.RULE, evidence=source.text, evidence_verified=True))
+    return out
+
+
 # ---------------------------------------------------------------- readability
 
 

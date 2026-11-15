@@ -38,8 +38,9 @@ def test_rules_and_ai_merge_with_sequential_ids_and_citations():
     assert [f.id for f in r.findings] == ["f-001", "f-002", "f-003"]
     by = {f.span: f for f in r.findings}
     assert by["LumoraPay"].checked_by.value == "rule" and by["LumoraPay"].source_id == "T01"
-    claim = by["the fastest payments app in India"]
-    assert claim.source_id == "UNVERIFIED" and claim.confidence <= 0.6 and claim.source_text == ""
+    claim = next(f for f in r.findings if "fastest payments app in India" in f.span)
+    # the rule check now catches the unsupported superlative itself and cites the claims guideline
+    assert claim.checked_by.value == "rule" and claim.source_id == "G07" and claim.evidence_verified
     assert by["revolutionary"].source_id == "G01" and by["revolutionary"].source_text
     assert len(r.findings) == 3 and r.model == "injected-llm"
 

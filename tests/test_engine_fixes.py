@@ -79,14 +79,14 @@ def test_s5_claim_guidelines_always_sent(kb):
                             "why": "x", "suggested_fix": "fast", "confidence": 0.9}])
     r = review.review_text("We are the fastest app.", kb=kb, llm=fake)
     assert "G07:" in seen["p"]
-    assert [f.source_id for f in r.findings if f.span == "fastest"] == ["G07"]
+    assert [f.source_id for f in r.findings if "fastest" in f.span] == ["G07"]
 
 
 def test_s6_capitalised_category_kept(kb):
     fake = lambda p: json.dumps([{"category": "Claim", "span": "best", "source_id": "G07",
                                   "why": "x", "suggested_fix": "good", "confidence": 0.8}])
     r = review.review_text("The best app.", kb=kb, llm=fake)
-    assert [f.category for f in r.findings if f.span == "best"] == [Category.CLAIM]
+    assert [f.category for f in r.findings if "best" in f.span.lower()] == [Category.CLAIM]
 
 
 def test_s7_one_dense_sentence_flagged(kb):

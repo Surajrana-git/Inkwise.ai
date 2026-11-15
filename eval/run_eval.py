@@ -38,14 +38,23 @@ def same_span(a: str, b: str) -> bool:
 
 
 def match(findings: list[dict], errors: list[dict]) -> list[tuple[dict, dict]]:
-    """Greedy one-to-one matching of findings to labelled errors."""
-    used, pairs = set(), []
-    for f in findings:
-        for i, e in enumerate(errors):
-            if i not in used and same_span(f["span"], e["exact_span"]):
-                used.add(i)
-                pairs.append((f, e))
-                break
+    """One-to-one matching of findings to labelled errors: identical spans first, then overlapping ones.
+
+    Exact matches go first so a short finding ("Lumora pay") is not paired with a longer labelled sentence
+    that happens to contain the same words while its own label is still free.
+    """
+    used_e, used_f, pairs = set(), set(), []
+    same_text = lambda a, b: a.lower().strip() == b.lower().strip()  # noqa: E731
+    for test in (same_text, same_span):
+        for j, f in enumerate(findings):
+            if j in used_f:
+                continue
+            for i, e in enumerate(errors):
+                if i not in used_e and test(f["span"], e["exact_span"]):
+                    used_e.add(i)
+                    used_f.add(j)
+                    pairs.append((f, e))
+                    break
     return pairs
 
 

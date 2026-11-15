@@ -494,6 +494,11 @@ def review_text(
         rules.check_terminology(text, kb.terms)
         + rules.check_expired_facts(text, kb.facts)
         + rules.check_expiring_facts(text, kb.facts)
+        + rules.check_unsupported_claims(
+            text,
+            kb.facts,
+            kb.get(rules.CLAIMS_GUIDELINE),
+        )
         + rules.check_readability(
             text,
             kb.get(rules.READABILITY_GUIDELINE),
