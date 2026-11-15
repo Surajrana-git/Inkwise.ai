@@ -19,8 +19,11 @@ log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gemini-flash-latest"
 MAX_TRIES = 2
-TIMEOUT_MS = 45_000
-TOTAL_BUDGET_S = 25
+TIMEOUT_MS = 20_000      # give up on one Gemini call after 20 s
+TOTAL_BUDGET_S = 45.0    # stop trying models after this many seconds in total
+# Free-tier backups, tried in order when the primary model is busy or over quota (429).
+# GEMINI_FALLBACK_MODELS (comma-separated) overrides this list.
+FALLBACK_MODELS = ("gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")
 MAX_AI_FINDINGS = 10
 UNVERIFIED_MAX_CONFIDENCE = 0.6
 MIN_EVIDENCE_CHARS = 8
@@ -88,12 +91,27 @@ def _model_name() -> str:
 
 
 def _fallback_models() -> list[str]:
-    raw = os.getenv("GEMINI_FALLBACK_MODELS", "")
-    return [
-        model.strip()
-        for model in raw.split(",")
-        if model.strip() and model.strip() != _model_name()
-    ]
+    raw = os.getenv("GEMINI_FALLBACK_MODELS")
+    names = raw.split(",") if raw else list(FALLBACK_MODELS)
+    out: list[str] = []
+    for m in (x.strip() for x in names):
+        if m and m != _model_name() and m not in out:
+            out.append(m)
+    return out
+
+
+def _with_deadline(fn, seconds: float):
+    """Run fn() but stop waiting after `seconds`, even if the HTTP library ignores its own timeout
+    (seen on some networks: the call hangs and the page spins forever). Raises TimeoutError."""
+    import concurrent.futures as cf
+    ex = cf.ThreadPoolExecutor(max_workers=1)
+    fut = ex.submit(fn)
+    try:
+        return fut.result(timeout=seconds)
+    except cf.TimeoutError:
+        raise TimeoutError(f"Gemini did not answer within {seconds:.0f} s") from None
+    finally:
+        ex.shutdown(wait=False)
 
 
 def _retryable(e: Exception) -> bool:
@@ -120,24 +138,33 @@ def _gemini_generate(prompt: str) -> str:
     models = [primary] + _fallback_models()
     last_error: Optional[Exception] = None
 
+    start = time.monotonic()
     for model_index, model in enumerate(models):
         attempts = MAX_TRIES if model_index == 0 else 1
 
         for attempt in range(attempts):
+            left = TOTAL_BUDGET_S - (time.monotonic() - start)
+            if left <= 0:
+                raise last_error or TimeoutError("Gemini did not answer in time")
             try:
-                response = client.models.generate_content(
-                    model=model,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        temperature=0.2,
+                response = _with_deadline(
+                    lambda: client.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            temperature=0.2,
+                        ),
                     ),
+                    max(1.0, min(TIMEOUT_MS / 1000 + 2, left)),
                 )
                 _last_model = model
                 return response.text or ""
 
             except Exception as exc:
                 last_error = exc
+                if "API_KEY_INVALID" in str(exc) or "API key not valid" in str(exc):
+                    raise                       # a bad key fails on every model: do not try the others
                 is_retryable = _retryable(exc)
 
                 if is_retryable and attempt < attempts - 1:
