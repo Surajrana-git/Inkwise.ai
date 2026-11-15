@@ -69,9 +69,12 @@ Rules:
 - G07 claim guidelines must be considered when reviewing claims and superlatives.
 - If two sources fit, cite the one whose title is most specific to the problem.
 - Use UNVERIFIED only for a claim that none of the SOURCES supports or refutes.
-- Report an issue only when the text clearly breaks the cited rule.
+- Report an issue ONLY when there is a clear, direct violation of a source rule.
+- Do not flag wording merely because it could be improved, is subjective, or might be interpreted as a violation.
+- Do not infer missing context or unsupported violations. The cited source must directly explain why the exact span is wrong.
+- Prefer the smallest exact span that demonstrates the violation; avoid duplicate findings for the same issue.
 - Text that follows the rules must produce no finding.
-- If unsure, return [].
+- If the violation or its source is uncertain, return [].
 - Keep placeholders such as [EMAIL_1] unchanged.
 - If nothing is wrong, return [].
 """
@@ -299,18 +302,16 @@ def _ai_findings(
             sources,
         )
 
-        # If the model cited a known source but supplied no quote,
-        # retain the citation as unverified. A wrong quote is UNVERIFIED.
-        if not raw_evidence and cited in sources:
-            sid = cited
-            evidence = ""
-            verified = False
-
         if verified and sid != cited and sid in category_of:
-            try:
-                category = Category(str(category_of[sid]).lower())
-            except ValueError:
-                pass
+            corrected_category = category_of[sid]
+            # Guideline categories may already be Category enum instances.
+            if isinstance(corrected_category, Category):
+                category = corrected_category
+            else:
+                try:
+                    category = Category(str(corrected_category).strip().lower())
+                except ValueError:
+                    pass
 
         try:
             confidence = max(
