@@ -32,7 +32,7 @@ Help topic icon was invisible.
 
 | Evaluation | Result | How to run |
 |---|---|---|
-| Test set, rules + Gemini (100 samples, 143 labels) | precision 88.7%, recall 98.6%, citation accuracy 92.9%, 4/25 clean flagged (start of Round 3: 83.5% / 95.8% / 83.2% / 10/25) | `python eval/run_eval.py --split test` |
+| Test set, rules + Gemini (100 samples, 143 labels, 99 answered by Gemini) | precision 84.3%, recall 93.7%, citation accuracy 98.5%, 6/25 clean flagged (previous run: 88.7% / 98.6% / 92.9% / 4/25; start of Round 3: 83.5% / 95.8% / 83.2% / 10/25) | `python eval/run_eval.py --split test` |
 | Test set, rules only, current engine | precision 95.7%, recall 62.2%, citation 100.0%, 2/25 clean flagged (before the unsupported-claims rule and the matcher fix: 95.0% / 53.1% / 97.4%) | `python eval/run_eval.py --split test --rules-only` |
 | Fact-freshness group (30 planted cases, fixed dates) | 30/30, recall 100%, precision 100% (previous checker: 18/30) | `python eval/run_fact_eval.py` |
 

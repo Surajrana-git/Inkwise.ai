@@ -89,12 +89,16 @@ for tuning). Every label points to a real brand-kit ID. Details: [eval/README.md
 
 | Setup (test set) | Precision | Recall | Citation accuracy | Clean samples wrongly flagged |
 |---|---:|---:|---:|---:|
-| **Rules + Gemini, current engine** (`eval/results.md`, 100 test samples) | **88.7%** | **98.6%** | **92.9%** | **4 / 25** |
+| **Rules + Gemini, final engine** (`eval/results.md`, 99/100 answered by Gemini) | **84.3%** | **93.7%** | **98.5%** | **6 / 25** |
+| Rules + Gemini, previous run (before the claims rule) | 88.7% | 98.6% | 92.9% | 4 / 25 |
 | Rules + Gemini, start of Round 3 | 83.5% | 95.8% | 83.2% | 10 / 25 |
 | Rules only, current engine | 95.7% | 62.2% | 100.0% | 2 / 25 |
 
-Recall by type with Gemini: terminology 50/50, claims 23/23, outdated facts 26/26, messaging 12/12,
-accessibility 12/12, tone 19/20. Remaining wrong citations: G07 (5), F01 (1), T01 (1).
+Recall by type with Gemini (final run): terminology 50/50, claims 23/23, outdated facts 26/26, tone 20/20,
+accessibility 8/12, messaging 7/12. Remaining wrong citations: G12 (2). All three Round 2 targets are met
+(recall ≥ 80%, precision ≥ 75%, citation accuracy ≥ 98%). Gemini's answers vary between runs: the previous run
+found more messaging and accessibility issues; the new claims rule does not overlap any of those labels, so we report
+both runs rather than pick the better one.
 
 **Fact-freshness test group** (`eval/fact_cases.jsonl`, rules only, fixed dates): **30/30 cases, recall 100%,
 precision 100%**. The previous checker scored 18/30 on the same cases.

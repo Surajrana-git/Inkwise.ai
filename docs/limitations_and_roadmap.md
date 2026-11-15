@@ -5,7 +5,7 @@
 | Limitation | Impact | What we do about it now |
 |---|---|---|
 | AI checks need Gemini, and the free tier can be slow, rate-limited or unreachable | Claims, tone and messaging findings and reading text in images are skipped | Rule checks always run; the page says what was skipped; backup models and hard time limits; stored AI results for the four sample drafts |
-| Citation accuracy with Gemini is 92.9%, below our 98% target (up from 83.2%) | 10 of 141 correct findings cite a near-miss source, 7 of them the general claims guideline G07 instead of a specific fact | Unverifiable quotes become UNVERIFIED, so a wrong cite never shows invented evidence; next step is tuning on the dev set |
+| Gemini's answers vary between runs | The same test set gave recall 98.6% in one run and 93.7% in the next (messaging and accessibility findings); 6 of 25 clean drafts were flagged in the final run | Rule checks are repeatable and always run; we report every run, not the best one; next step is averaging several runs and tuning the prompt on the dev set |
 | Image contrast without AI is an estimate | It may miss small text or, rarely, flag a texture | The finding says "estimated without AI"; with AI, contrast is measured on each located text line |
 | Scanned PDFs and old `.doc` files | No text to check | A clear message asks for a text PDF or `.docx` |
 | Demo sign-in, no real accounts or passwords | Anyone with the link can act as any demo person | Every action is in the audit log; roles are enforced in the engine |
@@ -17,7 +17,7 @@
 ## Roadmap
 
 **Next (first month after the event)**
-- Raise citation accuracy from 92.9% to 98%: prefer a specific fact over G07 when both match; tune on the dev set only.
+- Steadier AI results: average several runs, tune the messaging and accessibility prompt on the dev set only, and cut the 6/25 false alarms on clean drafts.
 - Second user test with five people: time taken per task, where they hesitated, and why.
 - Company sign-in (Google / Microsoft) with the same roles; a managed Postgres database instead of SQLite.
 

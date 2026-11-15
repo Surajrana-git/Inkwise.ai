@@ -8,9 +8,9 @@ and how to check it. Status: ✅ delivered · ⚠️ delivered with a stated gap
 | Promised | Status | Where / how to check |
 |---|---|---|
 | Re-run the eval correctly | ✅ | The Round 2 "1.2% recall" came from a different test file and a script that never loaded the API key. Fixed; `eval/run_eval.py` now refuses to write results if the AI did not answer. `eval/results.md` |
-| Recall ≥ 80% | ✅ 98.6% (was 51.0% in Round 2) | `eval/results.md` (rules + Gemini, test set, 100 samples) |
-| Precision ≥ 75% | ✅ 88.7% | same |
-| Citation accuracy ≥ 98% | ⚠️ 92.9% (was 83.2% at the start of Round 3) | Evidence verification and per-claim retrieval removed most wrong cites (G03 and G12 went from 11 to 1). 10 of 141 remained, 7 of them labelled G07: unsupported superlatives and "instant" promises that the AI cited to another source. A new rule check now catches these and cites G07 itself (`rules.check_unsupported_claims`); rules alone now cite correctly 89/89 (100%). The rules + Gemini figure is re-measured in `eval/results.md` |
+| Recall ≥ 80% | ✅ 93.7% (was 51.0% in Round 2; previous Round 3 run 98.6%) | `eval/results.md` (rules + Gemini, test set, 100 samples, 99 answered by Gemini) |
+| Precision ≥ 75% | ✅ 84.3% (previous run 88.7%) | same |
+| Citation accuracy ≥ 98% | ✅ 98.5% (132/134; was 83.2% at the start of Round 3, 92.9% before the claims rule) | Evidence verification and per-claim retrieval removed most wrong cites (G03 and G12 went from 11 to 1). 10 of 141 remained, 7 of them labelled G07: unsupported superlatives and "instant" promises that the AI cited to another source. A new rule check now catches these and cites G07 itself (`rules.check_unsupported_claims`); rules alone now cite correctly 89/89 (100%). Re-measured with Gemini: 98.5%, the only wrong citations left are 2 for G12 |
 | Per-claim retrieval | ✅ | `engine/review.py` `_source_listing`: the brand kit is searched for every sentence (claim) as well as the whole text, round-robin up to 18 sources, and the claims guideline G07 is always included. In a long draft, whole-text search alone missed F07, F02 and F06; per-claim retrieval keeps them (`tests/test_evidence.py`) |
 | Code checks the quoted evidence exists in the cited source; otherwise UNVERIFIED | ✅ | `engine/review.py` `_verify_evidence`; tests `tests/test_evidence.py` |
 | Evidence phrase highlighted inside the source quote | ✅ | Check a draft → open any finding |
