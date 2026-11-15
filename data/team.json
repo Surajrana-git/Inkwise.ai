@@ -1,0 +1,33 @@
+{
+  "team": "DECODIANS",
+  "members": [
+    {
+      "name": "Suraj Kumar",
+      "role": "Team lead · Backend",
+      "built": "Review workflow and audit log, fact register, insights engine, reliability, deployment, app shell",
+      "linkedin": "https://www.linkedin.com/in/suraj-kumar-340a56377",
+      "github": "https://github.com/Surajrana-git"
+    },
+    {
+      "name": "Riyana S",
+      "role": "AI / ML",
+      "built": "Gemini review engine, evidence verification, rule checks, privacy masking, first image checks, evaluation",
+      "linkedin": "https://www.linkedin.com/in/riyana-s-630226329/",
+      "github": "https://github.com/Riyana01"
+    },
+    {
+      "name": "Aashi Yadav",
+      "role": "Frontend",
+      "built": "Review screen: inline highlights, evidence quotes, expiry badges, input warnings",
+      "linkedin": "https://www.linkedin.com/in/aashi-yadav-107a713b9",
+      "github": "https://github.com/aashiyadav893-web"
+    },
+    {
+      "name": "Pritha S",
+      "role": "Product / Research",
+      "built": "Lumora brand kit, user testing, documentation",
+      "linkedin": "https://www.linkedin.com/in/pritha-sakthivel-4534b6327",
+      "github": "https://github.com/Pritha0605"
+    }
+  ]
+}

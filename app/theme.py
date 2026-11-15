@@ -531,11 +531,32 @@ LOGIN_CSS = f"""
 TEAM_BADGE = '<div class="iw-team">Team · <span>DECODIANS</span></div>'
 
 
+def restore_session() -> None:
+    """Keep a demo person signed in across a browser refresh.
+
+    Streamlit forgets everything on refresh, so the signed-in demo account is kept in the address
+    (?as=asha). Only the three demo accounts can be restored this way; they have no password anyway."""
+    ss = st.session_state
+    if ss.get("auth") or ss.get("signed_out"):
+        return
+    who = str(st.query_params.get("as", "")).strip().lower()
+    if who and who in ROLE_INFO and switch_user(who):
+        ss.landed_for = who            # a refresh keeps you on the page you were on
+        ss.splash_done = True
+
+
 def _sign_in(result: dict) -> None:
+    st.session_state.pop("signed_out", None)
     st.session_state.auth = True
     st.session_state.user = result.get("user", "")
     st.session_state.role = result.get("role", "Creator")
     st.session_state.team = result.get("team", "")
+
+
+def _login_click(username: str) -> None:
+    """Sign-in row callback: one run per click; a failure is shown on the next run."""
+    if not switch_user(username):
+        st.session_state["login_failed"] = True
 
 
 def switch_user(username: str) -> bool:
@@ -606,16 +627,15 @@ def login_screen() -> None:
             for a in accounts:
                 u = a["username"]
                 _i, title, desc, _bg, _fg = ROLE_INFO.get(u, ("", a["role"], a["can"], "", ""))
-                if st.button(f"**{title}** {full_name(u)} · {desc}", key=f"login_{u}", width="stretch"):
-                    if switch_user(u):
-                        st.rerun()
-                    st.error("Sign in failed. Try again in a moment.")
+                st.button(f"**{title}** {full_name(u)} · {desc}", key=f"login_{u}", width="stretch",
+                          on_click=_login_click, args=(u,))
+            if st.session_state.pop("login_failed", False):
+                st.error("Sign in failed. Try again in a moment.")
         st.markdown('<div class="iw-or"><span>or</span></div>', unsafe_allow_html=True)
         with st.container(key="iw_acct"):
             if not st.session_state.get("show_acct"):
-                if st.button("Sign in with your work account", key="acct_open", width="stretch"):
-                    st.session_state.show_acct = True
-                    st.rerun()
+                st.button("Sign in with your work account", key="acct_open", width="stretch",
+                          on_click=st.session_state.__setitem__, args=("show_acct", True))
             else:
                 with st.form("login_form", border=False):
                     email = st.text_input("Work email", placeholder="you@company.com")
@@ -644,9 +664,8 @@ def login_screen() -> None:
                                 '<span>Work email and single sign-on will be available when Inkwise goes live. '
                                 'For now, pick a demo role above to explore everything.</span></div>',
                                 unsafe_allow_html=True)
-                if st.button("Back to demo roles", key="acct_close"):
-                    st.session_state.show_acct = False
-                    st.rerun()
+                st.button("Back to demo roles", key="acct_close",
+                          on_click=st.session_state.__setitem__, args=("show_acct", False))
         st.markdown('<div class="iw-login-foot">Demo workspace · Lumora is a fictional brand · no real data</div>',
                     unsafe_allow_html=True)
     st.stop()
@@ -667,6 +686,7 @@ NAV = [  # (page file, tab label, roles that see it; None = everyone)
     ("pages/Insights.py", "Insights", ("Manager", "Admin")),
     ("pages/History.py", "History", None),
     ("pages/Knowledge_Base.py", "Brand Kit", None),
+    ("pages/Help.py", "Help", None),
 ]
 
 SHELL_CSS = f"""
@@ -676,25 +696,36 @@ SHELL_CSS = f"""
 .stApp {{ background: __INNER_BG__ !important; background-attachment: fixed !important; }}
 .block-container {{ padding:0 2.6rem 4rem !important; max-width:100% !important; }}
 /* hidden <style> blocks before the header still take a flex gap each: take them out of the flow */
-[data-testid="stVerticalBlock"] > div:has(~ div > .st-key-iw_header) {{ position:absolute !important; }}
-[data-testid="stAppViewContainer"]::before {{ content:""; position:absolute; top:0; left:0; right:0; height:60px;
+[data-testid="stVerticalBlock"] > div:has(~ div > .st-key-iw_header) {{ position:absolute !important; width:0 !important;
+  height:0 !important; overflow:hidden !important; }}
+/* the header and footer colour bands extend past the content; never let that create a sideways scroll */
+[data-testid="stMain"] {{ overflow-x:hidden !important; }}
+/* pin the header: its own wrapper is exactly its height, so make the wrapper the sticky element */
+[data-testid="stVerticalBlock"] > div:has(> .st-key-iw_header) {{ position:sticky !important; top:0; z-index:999; }}
+[data-testid="stAppViewContainer"]::before {{ content:""; position:absolute; top:0; left:0; right:0; height:93px;
   z-index:0; pointer-events:none; background:linear-gradient(90deg, #0D1A31 0%, #13284A 55%, #0F2A3F 100%); }}
 [data-testid="stElementContainer"]:has(> iframe[height="0"]), .stIFrame:has(iframe[height="0"]) {{ position:absolute !important; }}
 [data-stale="true"] {{ opacity:1 !important; transition:none !important; }}
+/* pop-ups appear just below the header bar, so they never cover the person's name or the bell */
+[data-testid="stToastContainer"] {{ top:104px !important; }}
 /* Streamlit 1.50: an image outside st.columns shrinks to 1rem; make it fill its card */
 [data-testid="stElementContainer"]:has([data-testid="stImage"]) {{ width:100% !important; }}
 [data-testid="stImage"] img {{ border-radius:10px; }}
 .st-key-iw_header {{ position:sticky; top:0; z-index:999; padding:8px 0 6px; margin-bottom:22px;
   background:linear-gradient(90deg, #0D1A31 0%, #13284A 55%, #0F2A3F 100%);
-  box-shadow:0 0 0 100vmax #0F213C, 0 10px 30px -12px rgba(13,26,49,.45); clip-path:inset(0 -100vmax -40px -100vmax); }}
+  box-shadow:0 0 0 100vmax #0F213C; clip-path:inset(0 -100vmax 0 -100vmax); }}
 .st-key-iw_header::after {{ content:""; position:absolute; left:-100vmax; right:-100vmax; bottom:0; height:1px;
   background:linear-gradient(90deg, transparent, rgba(63,208,182,.55), transparent); }}
 .st-key-iw_header .iw-wordmark span {{ color:#fff !important; }}
 .st-key-iw_header .iw-wordmark em {{ color:#3FD0B6 !important; }}
-.st-key-iw_header .iw-tab-active {{ color:#fff !important; border-bottom-color:#3FD0B6 !important; }}
-.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a p {{ color:rgba(255,255,255,.72) !important; }}
-.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a:hover {{ background:rgba(255,255,255,.06) !important; }}
+.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a p, .st-key-iw_header .iw-tab-fallback {{ color:rgba(255,255,255,.68) !important; }}
+.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a:hover {{ background-color:rgba(255,255,255,.07) !important; }}
 .st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a:hover p {{ color:#fff !important; }}
+.st-key-iw_header [class*="st-key-iw_tab_on_"] [data-testid="stPageLink"] a,
+.st-key-iw_header [class*="st-key-iw_tab_on_"] .iw-tab-fallback {{ background-color:rgba(63,208,182,.15) !important;
+  border-color:rgba(63,208,182,.45) !important; box-shadow:0 0 0 3px rgba(63,208,182,.06); }}
+.st-key-iw_header [class*="st-key-iw_tab_on_"] [data-testid="stPageLink"] a p,
+.st-key-iw_header [class*="st-key-iw_tab_on_"] .iw-tab-fallback {{ color:#fff !important; }}
 .st-key-iw_header .iw-status {{ border:1px solid rgba(255,255,255,.14); }}
 .st-key-iw_header .iw-status.ok {{ background:rgba(63,208,182,.14); color:#7FE6D2; }}
 .st-key-iw_header .iw-status.ok i {{ background:#3FD0B6; box-shadow:0 0 0 3px rgba(63,208,182,.25); }}
@@ -707,6 +738,45 @@ SHELL_CSS = f"""
 .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button:hover {{ background:rgba(255,255,255,.06) !important; }}
 .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button svg {{ color:rgba(255,255,255,.7) !important; fill:currentColor; }}
 .st-key-iw_header [data-testid="stHorizontalBlock"] {{ align-items:center; }}
+.iw-strip {{ display:flex; align-items:center; gap:12px; font-size:.68rem; color:rgba(255,255,255,.62);
+  padding:2px 0 7px; margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,.08); white-space:nowrap; overflow:hidden; }}
+.iw-strip b {{ color:#fff; font-weight:600; }}
+.iw-strip .sp {{ flex:1; }}
+.iw-strip .pill {{ font-style:normal; font-weight:600; padding:2px 9px; border-radius:999px;
+  background:rgba(255,255,255,.08); color:rgba(255,255,255,.82); }}
+.iw-strip .pill.mint {{ background:rgba(63,208,182,.16); color:#7FE6D2; }}
+.st-key-iw_footer {{ margin-top:56px; padding:34px 0 0; position:relative; color:rgba(255,255,255,.72);
+  background:linear-gradient(90deg, #0D1A31 0%, #13284A 60%, #0F2A3F 100%);
+  box-shadow:0 0 0 100vmax #0F213C; clip-path:inset(0 -100vmax -100vmax -100vmax); }}
+.st-key-iw_footer::before {{ content:""; position:absolute; left:-100vmax; right:-100vmax; top:0; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(63,208,182,.55), transparent); }}
+.iw-ft-blurb {{ font-size:.8rem; line-height:1.55; margin:10px 0 12px; max-width:360px; }}
+.iw-ft-tags {{ font-size:.7rem; color:#7FE6D2; letter-spacing:.02em; }}
+.iw-ft-h {{ font-size:.66rem; letter-spacing:.16em; font-weight:700; color:#fff; margin:4px 0 10px; }}
+.iw-ft-li {{ font-size:.8rem; margin:0 0 7px; color:rgba(255,255,255,.72); }}
+.st-key-iw_footer [data-testid="stPageLink"] a {{ padding:0 !important; min-height:0 !important; background:transparent !important; }}
+.st-key-iw_footer [data-testid="stPageLink"] a p {{ font-size:.8rem !important; color:rgba(255,255,255,.72) !important; font-weight:400 !important; }}
+.st-key-iw_footer [data-testid="stPageLink"] a:hover p {{ color:#fff !important; }}
+.st-key-iw_footer [data-testid="stPageLink"] {{ margin-bottom:-6px; }}
+.iw-team-row {{ margin:24px 0 0; padding-top:18px; border-top:1px solid rgba(255,255,255,.08); text-align:center; }}
+.iw-team-h {{ font-size:.62rem; letter-spacing:.18em; font-weight:700; color:rgba(255,255,255,.45); margin-bottom:10px; }}
+.iw-team-h b {{ color:#7FE6D2; font-weight:700; }}
+.iw-team-grid {{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; }}
+.iw-tm {{ display:inline-flex; align-items:center; gap:9px; padding:6px 8px 6px 6px; border-radius:999px; cursor:default;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); transition:border-color .15s ease, background-color .15s ease; }}
+.iw-tm:hover {{ border-color:rgba(63,208,182,.4); background:rgba(255,255,255,.07); }}
+.iw-tm > i {{ font-style:normal; width:28px; height:28px; border-radius:50%; flex:none; display:flex; align-items:center;
+  justify-content:center; background:linear-gradient(135deg, #3FD0B6, #12917F); color:#0D1A31; font-weight:700; font-size:.66rem; }}
+.iw-tm b {{ display:block; color:#fff; font-size:.78rem; font-weight:600; line-height:1.15; text-align:left; }}
+.iw-tm small {{ display:block; color:rgba(255,255,255,.5); font-size:.66rem; line-height:1.2; text-align:left; }}
+.iw-tm-l {{ display:inline-flex; gap:4px; margin-left:4px; }}
+.iw-tm-l a {{ width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+  color:rgba(255,255,255,.7) !important; background:rgba(255,255,255,.06); text-decoration:none !important;
+  transition:background-color .15s ease, color .15s ease; }}
+.iw-tm-l a:hover {{ background:#3FD0B6; color:#0D1A31 !important; }}
+.iw-ft-legal {{ display:flex; flex-wrap:wrap; justify-content:center; text-align:center; gap:6px 18px; font-size:.7rem; color:rgba(255,255,255,.5);
+  border-top:1px solid rgba(255,255,255,.08); margin-top:22px; padding:14px 0 18px; }}
+.iw-ft-legal b {{ color:rgba(255,255,255,.8); font-weight:600; }}
 .iw-ph {{ margin:6px 0 20px; }}
 .iw-ph .eyebrow {{ font-size:.68rem; letter-spacing:.18em; font-weight:700; color:{TEAL}; margin-bottom:6px; }}
 .iw-ph h1 {{ font-family:'Instrument Serif', Georgia, serif !important; font-weight:400 !important; font-size:2.5rem !important;
@@ -745,7 +815,9 @@ SHELL_CSS = f"""
 .iw-wordmark img {{ border-radius:8px; }}
 .iw-wordmark span {{ font-weight:700; letter-spacing:-.02em; }}
 .iw-wordmark em {{ font-style:normal; color:#12917F; }}
-.st-key-iw_header .iw-wordmark span {{ font-size:1.15rem; }}
+.st-key-iw_header .iw-wordmark {{ gap:12px; }}
+.st-key-iw_header .iw-wordmark span {{ font-size:1.6rem; letter-spacing:-.025em; }}
+.st-key-iw_header .iw-wordmark img {{ border-radius:11px; box-shadow:0 4px 14px rgba(0,0,0,.25); }}
 .iw-status {{ display:inline-flex; align-items:center; gap:6px; font-size:.72rem; font-weight:600; padding:4px 10px;
   border-radius:999px; white-space:nowrap; }}
 .iw-status i {{ width:7px; height:7px; border-radius:50%; display:inline-block; }}
@@ -754,12 +826,21 @@ SHELL_CSS = f"""
 .iw-status.bad {{ background:#FDECEC; color:#B42318; cursor:help; }} .iw-status.bad i {{ background:#D93025; }}
 .st-key-iw_tabs [data-testid="stHorizontalBlock"] {{ gap:0 !important; flex-wrap:nowrap; }}
 .st-key-iw_tabs [data-testid="stColumn"] {{ min-width:0 !important; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a {{ border-radius:0 !important; padding:10px 4px 12px !important;
-  border-bottom:2px solid transparent; background:transparent !important; justify-content:center; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a p {{ font-size:.82rem; color:{MUTED} !important; font-weight:600; white-space:nowrap; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a:hover p {{ color:{NAVY} !important; }}
-.iw-tab-active {{ display:block; text-align:center; padding:10px 4px 12px; border-bottom:2px solid {TEAL};
-  font-size:.82rem; font-weight:700; color:{NAVY}; white-space:nowrap; }}
+/* tabs: every tab is the same element with the same box, so switching pages never moves anything */
+.st-key-iw_tabs [data-testid="stPageLink"] {{ margin:0 clamp(0px, .2vw, 3px); }}
+.st-key-iw_header .iw-status {{ font-size:clamp(.58rem, .76vw, .72rem); padding:4px clamp(5px, .6vw, 10px); gap:clamp(3px, .4vw, 6px); }}
+@media (max-width: 1250px) {{ .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button p {{ font-size:.7rem !important; }}
+  .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button p strong {{ font-size:.8rem !important; }} }}
+.st-key-iw_header .iw-wordmark span {{ font-size:clamp(1.2rem, 1.75vw, 1.6rem) !important; }}
+@media (max-width: 1150px) {{ .iw-strip span:nth-of-type(2), .iw-strip .pill:not(.mint) {{ display:none; }} }}
+.st-key-iw_tabs [data-testid="stPageLink"] a {{ border-radius:999px !important; padding:7px clamp(2px, .45vw, 8px) !important; min-height:36px;
+  border:1px solid transparent !important; background:transparent !important; justify-content:center;
+  transition:background-color .15s ease, border-color .15s ease; }}
+.st-key-iw_tabs [data-testid="stPageLink"] a p {{ font-size:clamp(.66rem, .96vw, .84rem) !important; font-weight:600 !important;
+  white-space:nowrap; letter-spacing:.01em; overflow:visible !important; text-overflow:clip !important; }}
+.st-key-iw_tabs [data-testid="stPageLink"] a > * {{ overflow:visible !important; }}
+.iw-tab-fallback {{ display:block; text-align:center; padding:7px 12px; min-height:36px; border-radius:999px;
+  font-size:.84rem; font-weight:600; white-space:nowrap; border:1px solid transparent; }}
 .st-key-iw_user [data-testid="stPopover"] button {{ background:transparent !important; border:none !important;
   padding:4px 6px 4px 50px !important; min-height:46px; position:relative; justify-content:flex-start; }}
 .st-key-iw_user [data-testid="stPopover"] button p {{ text-align:left; line-height:1.25; font-size:.78rem; white-space:nowrap;
@@ -781,6 +862,23 @@ SHELL_CSS = f"""
 [data-testid="stPopoverBody"] .stButton button {{ position:relative; padding-right:70px !important; }}
 [data-testid="stPopoverBody"] .stButton button:disabled p em {{ color:#3C5BD8 !important; font-style:normal;
   position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:.78rem; }}
+.st-key-iw_bell [data-testid="stPopover"] > div > button, .st-key-iw_bell [data-testid="stPopover"] button {{
+  background:rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:999px !important;
+  min-height:38px; width:42px; padding:0 !important; position:relative; justify-content:center; }}
+.st-key-iw_bell [data-testid="stPopover"] button:hover {{ background:rgba(255,255,255,.12) !important; }}
+.st-key-iw_bell [data-testid="stPopover"] button p {{ font-size:1rem; }}
+.st-key-iw_bell [data-testid="stPopover"] button svg {{ display:none; }}
+.st-key-iw_bell [data-testid="stPopover"] button::after {{ content:var(--iw-unread); position:absolute; top:-5px; right:-6px;
+  min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#FF6B60; color:#fff; font-size:.66rem;
+  font-weight:700; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #13284A; }}
+.st-key-iw_bell [data-testid="stPopover"] button[aria-expanded]::after {{ }}
+[data-testid="stPopoverBody"]:has(.st-key-nt_read), [data-testid="stPopoverBody"]:has([class*="st-key-nt_"]) {{ min-width:390px; max-width:420px; }}
+[data-testid="stPopoverBody"] [class*="st-key-nt_new_"] button {{ background:#F0F8F6 !important; }}
+[data-testid="stPopoverBody"] [class*="st-key-nt_new_"] button::before {{ content:""; position:absolute; left:6px; top:50%;
+  transform:translateY(-50%); width:7px; height:7px; border-radius:50%; background:#12917F; }}
+.iw-nt-empty {{ font-size:.86rem; color:{MUTED}; padding:10px 12px 14px; }}
+.st-key-nt_read button {{ min-height:38px !important; border-top:1px solid {LINE} !important; border-radius:0 !important; }}
+.st-key-nt_read button p {{ color:#12917F !important; font-weight:600 !important; font-size:.84rem !important; }}
 .st-key-iw_signout button {{ min-height:40px !important; border-top:1px solid {LINE} !important; border-radius:0 !important; }}
 .st-key-iw_signout button p {{ color:{NAVY} !important; font-size:.88rem !important; }}
 .rv-live .rm {{ color:#B42318; background:#FDECEC; text-decoration:line-through; text-decoration-thickness:1.5px;
@@ -867,6 +965,97 @@ LIVE_LEGEND = ('<div class="rv-legend">'
                '<span><i style="border-bottom:2px wavy #D93025"></i>still open</span></div>')
 
 
+FOOTER_PRODUCT = [("pages/1_Review.py", "Pre-publication check"), ("pages/Approvals.py", "Approvals and sign-off"),
+                  ("pages/Fact_Register.py", "Fact Register"), ("pages/History.py", "History and audit reports"),
+                  ("pages/Knowledge_Base.py", "Brand kit")]
+FOOTER_TRUST = ["Every finding cites its source", "Facts with owners and expiry dates", "A person approves every change",
+                "Personal data masked before AI", "Full audit trail"]
+
+
+def _team() -> dict:
+    try:
+        return json.loads((APP_DIR.parent / "data" / "team.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {"team": "DECODIANS", "members": []}
+
+
+def _safe_url(u: str) -> str:
+    u = (u or "").strip()
+    return html.escape(u, quote=True) if u.startswith(("https://", "http://")) else ""
+
+
+_ICON_IN = ('<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M4.98 3.5a2.5 '
+            '2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 '
+            '6.1V21h-4v-5.4c0-1.29-.02-2.95-1.8-2.95-1.8 0-2.08 1.4-2.08 2.86V21H9z"/></svg>')
+_ICON_GH = ('<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M12 .5a11.5 11.5 0 '
+            '0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 '
+            '1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 '
+            '1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 '
+            '2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 '
+            '11.5 0 0 0 12 .5z"/></svg>')
+
+
+def team_html() -> str:
+    """Slim, centred 'Built by DECODIANS' row: avatar, name, role and small LinkedIn / GitHub icons.
+    What each person built is in the tooltip, so the footer stays light."""
+    t = _team()
+    pills = []
+    for m in t.get("members", []):
+        links = "".join(
+            f'<a href="{url}" target="_blank" rel="noopener noreferrer" title="{label} · {html.escape(m.get("name", ""))}"'
+            f' aria-label="{label}">{icon}</a>'
+            for label, url, icon in (("LinkedIn", _safe_url(m.get("linkedin")), _ICON_IN),
+                                     ("GitHub", _safe_url(m.get("github")), _ICON_GH)) if url)
+        pills.append(
+            f'<div class="iw-tm" title="{html.escape(m.get("built", ""), quote=True)}">'
+            f'<i>{html.escape(_initials(m.get("name", "")))}</i>'
+            f'<div><b>{html.escape(m.get("name", ""))}</b><small>{html.escape(m.get("role", ""))}</small></div>'
+            + (f'<span class="iw-tm-l">{links}</span>' if links else "") + "</div>")
+    if not pills:
+        return ""
+    return (f'<div class="iw-team-row"><div class="iw-team-h">BUILT BY <b>{html.escape(t.get("team", ""))}</b></div>'
+            f'<div class="iw-team-grid">{"".join(pills)}</div></div>')
+
+
+def footer() -> None:
+    """Navy footer at the bottom of every signed-in page."""
+    def link(page, label):
+        try:
+            st.page_link(page, label=label)
+        except Exception:                       # headless tests: no multipage context
+            st.markdown(f'<div class="iw-ft-li">{html.escape(label)}</div>', unsafe_allow_html=True)
+
+    with st.container(key="iw_footer"):
+        c1, c2, c3, c4 = st.columns([1.6, 1, 1.1, 1], gap="large")
+        with c1:
+            st.markdown(wordmark(True, 34)
+                        + '<div class="iw-ft-blurb">Checks campaign copy and creatives against your guidelines, '
+                          'approved facts and glossary, shows the source behind every finding, and keeps a person '
+                          'in charge of every change.</div>'
+                          '<div class="iw-ft-tags">Built for CodeTitans India 2026 · Round 3 · DECODIANS</div>',
+                        unsafe_allow_html=True)
+        with c2:
+            st.markdown('<div class="iw-ft-h">PRODUCT</div>', unsafe_allow_html=True)
+            for page, label in FOOTER_PRODUCT:
+                link(page, label)
+        with c3:
+            st.markdown('<div class="iw-ft-h">TRUST AND GOVERNANCE</div>'
+                        + "".join(f'<div class="iw-ft-li">{html.escape(x)}</div>' for x in FOOTER_TRUST),
+                        unsafe_allow_html=True)
+        with c4:
+            st.markdown('<div class="iw-ft-h">RESOURCES</div>', unsafe_allow_html=True)
+            link("pages/Help.py", "Help Centre")
+            link("pages/Help.py", "Methodology and AI disclosure")
+            link("pages/Insights.py" if st.session_state.get("role") in ("Manager", "Admin") else "pages/Help.py",
+                 "Guideline insights" if st.session_state.get("role") in ("Manager", "Admin") else "Known limitations")
+        st.markdown(team_html(), unsafe_allow_html=True)
+        st.markdown('<div class="iw-ft-legal"><span>© 2026 <b>Inkwise.ai</b></span>'
+                    '<span>Lumora is a fictional brand; all data is synthetic</span>'
+                    '<span>AI findings are suggestions, never automatic edits</span>'
+                    '<span>Gemini is used for AI checks; personal data is masked first</span></div>',
+                    unsafe_allow_html=True)
+
+
 def page_header(eyebrow: str, title: str, subtitle: str = "") -> None:
     """Same header on every page: small category label, serif title, one-line purpose."""
     st.markdown(f'<div class="iw-ph"><div class="eyebrow">{html.escape(eyebrow.upper())}</div><h1>{html.escape(title)}</h1>'
@@ -922,10 +1111,25 @@ JOURNEY_CSS = """<style>
 def journey() -> None:
     """End-to-end story for judges: five steps, each switches to the right person and opens the right page."""
     ss = st.session_state
-    if ss.get("journey_hidden"):
-        if st.button("Show the 3-minute end-to-end story", key="j_show"):
-            ss.journey_hidden = False
-            st.rerun()
+    if ss.get("journey_hidden", True):                 # hidden until someone asks for it
+        st.markdown("""<style>
+.st-key-iw_journey_closed { background:linear-gradient(90deg, #13284A, #1B2A4E); border-radius:14px; padding:10px 12px 10px 18px;
+  box-shadow:0 6px 18px rgba(13,26,49,.12); margin-bottom:6px; }
+.st-key-iw_journey_closed [data-testid="stHorizontalBlock"] { align-items:center; }
+.iw-jc { display:flex; align-items:center; gap:12px; color:#C9D6EA; font-size:.86rem; }
+.iw-jc i { font-style:normal; width:30px; height:30px; border-radius:50%; background:rgba(63,208,182,.16); color:#7FE6D2;
+  display:flex; align-items:center; justify-content:center; font-size:.9rem; flex:none; }
+.iw-jc b { color:#fff; font-weight:650; }
+.st-key-j_show button { background:#3FD0B6 !important; border:none !important; border-radius:999px !important; min-height:36px; }
+.st-key-j_show button p { color:#0D1A31 !important; font-weight:700 !important; font-size:.84rem !important; }
+.st-key-j_show button:hover { background:#7FE6D2 !important; }
+</style>""", unsafe_allow_html=True)
+        with st.container(key="iw_journey_closed"):
+            c1, c2 = st.columns([5, 1.3])
+            c1.markdown('<div class="iw-jc"><i>▶</i><span><b>New here?</b> Follow the 3-minute end-to-end story: five '
+                        'steps, each as the right person.</span></div>', unsafe_allow_html=True)
+            c2.button("Show the story", key="j_show", width="stretch",
+                      on_click=ss.__setitem__, args=("journey_hidden", False))
         return
     st.markdown(JOURNEY_CSS, unsafe_allow_html=True)
     with st.container(key="iw_journey"):
@@ -933,9 +1137,7 @@ def journey() -> None:
         h1.markdown('<div class="jh"><b>Try the end-to-end story</b><small>about 3 minutes</small></div>'
                     '<div class="js">Each step switches to the right person for you. You can also explore freely; '
                     'every page works for every role it is shown to.</div>', unsafe_allow_html=True)
-        if h2.button("Hide", key="j_hide"):
-            ss.journey_hidden = True
-            st.rerun()
+        h2.button("Hide", key="j_hide", on_click=ss.__setitem__, args=("journey_hidden", True))
         for col, (n, who, title, text, page, sample) in zip(st.columns(len(JOURNEY)), JOURNEY):
             with col:
                 st.markdown(f'<div class="iw-jcard"><span class="n">{n}</span><b>{html.escape(title)}</b>'
@@ -973,6 +1175,72 @@ def _initials(name: str) -> str:
 def _sign_out() -> None:
     for key in ("auth", "user", "role", "team", "show_acct"):
         st.session_state.pop(key, None)
+    st.session_state["signed_out"] = True          # do not restore from the address after an explicit sign-out
+    try:
+        if "as" in st.query_params:
+            del st.query_params["as"]
+    except Exception:
+        pass
+
+
+def _ago(stamp: str) -> str:
+    from datetime import datetime, timezone
+    try:
+        t = datetime.strptime((stamp or "")[:16].replace("T", " "), "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    except ValueError:
+        try:
+            t = datetime.strptime((stamp or "")[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            return ""
+    m = int((datetime.now(timezone.utc) - t).total_seconds() // 60)
+    if m < 0:
+        return "soon"
+    return (f"{max(m, 1)} min ago" if m < 60 else f"{m // 60} h ago" if m < 1440 else
+            "yesterday" if m < 2880 else f"{m // 1440} days ago")
+
+
+def _mark_read(user: str, ids: list) -> None:
+    st.session_state.setdefault("notif_seen", {}).setdefault(user, set()).update(ids)
+
+
+TOAST_SECONDS = 3            # pop-ups stay a little shorter than Streamlit's 4 s default
+
+
+def notification_bell(user: str, role: str) -> None:
+    """Bell with the unread count; pop-ups for anything new when a person signs in or switches."""
+    ss = st.session_state
+    try:
+        notifs = services.notifications(user, role, {u: full_name(u) for u in FULL_NAMES})
+    except Exception:
+        notifs = []
+    seen = ss.setdefault("notif_seen", {}).setdefault(user, set())
+    toasted = ss.setdefault("notif_toasted", {}).setdefault(user, set())
+    unread = [n for n in notifs if n["id"] not in seen]
+    fresh = [n for n in unread if n["id"] not in toasted]
+    for n in fresh[:3]:
+        st.toast(f"**{n['title']}**  \n{n['detail']}", icon=n["icon"], duration=TOAST_SECONDS)
+    if len(fresh) > 3:
+        st.toast(f"{len(fresh) - 3} more in your notifications (🔔, top right)", icon="🔔", duration=TOAST_SECONDS)
+    toasted.update(n["id"] for n in fresh)
+    st.markdown(f"<style>.st-key-iw_bell {{ --iw-unread:'{len(unread) if unread else ''}'; }}</style>",
+                unsafe_allow_html=True)
+    with st.popover("🔔", help="Notifications"):
+        st.markdown(f'<div class="iw-menu-h">NOTIFICATIONS · {len(unread)} NEW</div>', unsafe_allow_html=True)
+        if not notifs:
+            st.markdown('<div class="iw-nt-empty">You are all caught up.</div>', unsafe_allow_html=True)
+        for i, n in enumerate(notifs[:12]):
+            new = n["id"] not in seen
+            when = _ago(n["at"])
+            if st.button(f"**{n['icon']}  {n['title']}** {n['detail']}" + (f" · {when}" if when else ""),
+                         key=f"nt_{'new' if new else 'old'}_{i}", width="stretch"):
+                _mark_read(user, [n["id"]])
+                try:
+                    st.switch_page(n["page"])
+                except Exception:
+                    st.rerun()
+        if unread:
+            st.button("Mark all as read", key="nt_read", width="stretch",
+                      on_click=_mark_read, args=(user, [n["id"] for n in notifs]))
 
 
 def header() -> None:
@@ -993,21 +1261,25 @@ def header() -> None:
     st.markdown(shell, unsafe_allow_html=True)
     persist_css({"iw-global": _style_text(CSS), "iw-shell": _style_text(shell), "iw-boot": None})
     with st.container(key="iw_header"):
-        c_logo, c_tabs, c_status, c_user = st.columns([1.45, 6.6, 1.05, 2.1], vertical_alignment="center", gap="small")
+        st.markdown(
+            '<div class="iw-strip"><span>Content governance before you publish</span>'
+            '<i class="pill mint">CodeTitans India 2026</i><span>Round 3 · The Finish</span>'
+            '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
+            '<span class="sp"></span><span>Built by <b>DECODIANS</b></span></div>', unsafe_allow_html=True)
+        c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.75, 6.2, 1.15, 0.55, 1.95], vertical_alignment="center",
+                                                              gap="small")
         with c_logo:
-            st.markdown(wordmark(True, 30), unsafe_allow_html=True)
+            st.markdown(wordmark(True, 44), unsafe_allow_html=True)
         with c_tabs, st.container(key="iw_tabs"):
             tabs = [t for t in NAV if t[2] is None or role in t[2]]
-            for col, (page, label, _r) in zip(st.columns(len(tabs)), tabs):
-                with col:
-                    if page == current:
-                        st.markdown(f'<span class="iw-tab-active">{html.escape(label)}</span>', unsafe_allow_html=True)
-                    else:
-                        try:
-                            st.page_link(page, label=label)
-                        except Exception:   # e.g. headless test runner without multipage context
-                            st.markdown(f'<span class="iw-tab-active" style="border-color:transparent;font-weight:600;'
-                                        f'color:{MUTED}">{html.escape(label)}</span>', unsafe_allow_html=True)
+            widths = [max(len(label), 6) + 5 for _p, label, _r in tabs]       # longer labels get wider pills, nothing truncates
+            for i, (col, (page, label, _r)) in enumerate(zip(st.columns(widths), tabs)):
+                on = "on" if page == current else "off"
+                with col, st.container(key=f"iw_tab_{on}_{i}"):
+                    try:
+                        st.page_link(page, label=label, width="stretch")
+                    except Exception:   # headless test runner without multipage context
+                        st.markdown(f'<span class="iw-tab-fallback">{html.escape(label)}</span>', unsafe_allow_html=True)
         with c_status:
             if ai["ok"] is None:
                 st.markdown('<span class="iw-status" style="background:#F3F5F9;color:#5A6480">'
@@ -1018,6 +1290,8 @@ def header() -> None:
             else:
                 st.markdown(f'<span class="iw-status bad" title="{html.escape(ai["reason"])}. Rule checks still run.">'
                             '<i></i>AI not connected</span>', unsafe_allow_html=True)
+        with c_bell, st.container(key="iw_bell"):
+            notification_bell(user, role)
         with c_user, st.container(key="iw_user"):
             with st.popover(f"**{full_name(user)}** {role} · {ORG}"):
                 st.markdown('<div class="iw-menu-h">SWITCH DEMO USER</div>', unsafe_allow_html=True)
@@ -1040,7 +1314,13 @@ def render_shell() -> None:
     st.session_state.setdefault("role", "Creator")
     st.session_state.setdefault("user", "Demo user")
 
+    restore_session()
     if REQUIRE_LOGIN and not st.session_state.get("auth"):
         login_screen()
+    if st.session_state.get("auth") and st.session_state.get("user") in ROLE_INFO:
+        try:
+            st.query_params["as"] = st.session_state["user"]     # survives a refresh; see restore_session()
+        except Exception:
+            pass
 
     header()

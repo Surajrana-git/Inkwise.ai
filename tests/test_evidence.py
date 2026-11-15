@@ -97,3 +97,19 @@ def test_rule_findings_carry_verified_evidence_and_fact_owner():
     fact = next(f for f in r.findings if f.source_id == "F01")
     assert fact.fact_owner == "Comms" and fact.freshness == "expired"
     assert fact.evidence_verified and fact.evidence in fact.source_text
+
+def test_per_claim_retrieval_finds_the_source_behind_each_sentence():
+    """In a long draft, whole-text search misses the fact behind the last sentence; per-claim retrieval keeps it."""
+    import pytest
+    from engine import knowledge, review
+    kb = knowledge.KnowledgeBase(*knowledge.load_brand_kit())   # fresh from the files: no rewordings from other tests
+    filler = ("Spend Insights groups your spending by category. Set a monthly spending target in Spend Insights. "
+              "Review any displayed fee before confirming a transfer. Download your monthly activity statement. "
+              "Update your contact details in profile settings. Turn on transaction notifications in app settings. "
+              "Biometric sign-in works on compatible devices. ")
+    for last, fact in [("Lumora Pay is available in 8 markets.", "F07"), ("Send money in 12 currencies.", "F02"),
+                       ("Lumora support is available seven days a week.", "F06")]:
+        text = filler + last
+        assert fact not in {m.source_id for m in kb.search(text)}          # whole-text search alone misses it
+        sources, _ = review._source_listing(kb, text)
+        assert fact in sources and "G07" in sources and len(sources) <= review.MAX_SOURCES

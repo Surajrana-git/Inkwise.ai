@@ -74,6 +74,29 @@ def transcribe_voice():
         ss.rv_voice_error = f"Could not transcribe ({type(e).__name__}). Try again or type instead."
 
 
+def import_document():
+    """Document upload -> text box (a callback, so it can set rv_text before the widget is drawn)."""
+    key = f"rv_doc_{ss.get('rv_doc_n', 0)}"
+    up = ss.get(key)
+    if up is None:
+        return
+    try:
+        out = services.extract_document(up.getvalue(), up.name)
+    except InputError as e:
+        ss.rv_doc_msg = ("warn", str(e))
+    else:
+        ss.rv_text = out["text"]
+        if not ss.get("rv_title"):
+            ss.rv_title = Path(up.name).stem.replace("_", " ").replace("-", " ")[:60]
+        where = f"{out['pages']} page{'s' if out['pages'] != 1 else ''} · " if up.name.lower().endswith(".pdf") else ""
+        ss.rv_doc_msg = ("ok", f"Imported {up.name} ({where}{len(out['text'].split())} words). "
+                               + (f"It had {out['chars']:,} characters; the first 12,000 were imported. "
+                                  if out["truncated"] else "")
+                               + "Check the text, then run the check.")
+        ss.rv_findings = None
+    ss.rv_doc_n = ss.get("rv_doc_n", 0) + 1          # a fresh, empty uploader next time
+
+
 SAMPLE_BANNER = Path(__file__).resolve().parents[1] / "assets" / "sample_banner.png"
 
 
@@ -130,6 +153,14 @@ def render_row(f):
         if f["source_text"]:
             st.markdown(rh.quote_html(f["source_text"], f["source_id"], owner, rh.evidence_terms(f)),
                         unsafe_allow_html=True)
+            sid = str(f["source_id"])
+            if len(sid) == 3 and sid[0] in "GFTV":           # one click to the full source in the brand kit
+                if st.button(f"Open {sid} in Brand Kit ↗", key=f"src_{fid}", type="tertiary"):
+                    ss.kb_focus = sid
+                    try:
+                        st.switch_page("pages/Knowledge_Base.py")
+                    except Exception:
+                        pass
         else:
             theme.source_quote(f["source_text"], f["source_id"], owner)
         if f["suggested_fix"] and not editing:
@@ -225,6 +256,14 @@ with left, st.container(key="rv_draft"):
     t1, t2 = st.columns([1.6, 1])
     t1.text_input("Campaign title", key="rv_title", placeholder="e.g. Diwali launch post")
     t2.selectbox("Channel", ["Social post", "Email", "Push notification", "Web page", "Paid ad"], key="rv_channel")
+    with st.popover("📄  Import from a PDF, Word or text file", width="stretch"):
+        st.file_uploader("Document", type=["pdf", "docx", "txt", "md"], key=f"rv_doc_{ss.get('rv_doc_n', 0)}",
+                         on_change=import_document, label_visibility="collapsed",
+                         help="The text is put in the box below, where you can edit it before the check.")
+        st.caption("PDF, Word (.docx), .txt or .md, up to 5 MB. Only the first 12,000 characters are checked.")
+    if ss.get("rv_doc_msg"):
+        kind, msg = ss.pop("rv_doc_msg")
+        (st.success if kind == "ok" else st.warning)(msg)
     st.text_area("Copy to check", key="rv_text", height=230,
                  placeholder="Paste the copy you want to publish, or pick a sample draft above.")
     txt = ss.get("rv_text") or ""
@@ -308,8 +347,9 @@ with right, st.container(key="rv_results"):
         else:
             MUST = ("claim", "outdated_fact", "terminology")
             is_open = [f for f in findings if f["status"] == "open"]
-            must = sum(f["category"] in MUST for f in findings)
-            must_left = sum(f["category"] in MUST for f in is_open)
+            is_must = lambda f: f["category"] in MUST and f.get("freshness") != "expiring_soon"   # advice, not an error
+            must = sum(is_must(f) for f in findings)
+            must_left = sum(is_must(f) for f in is_open)
             sugg_left = len(is_open) - must_left
             unver = sum(f["source_id"] == "UNVERIFIED" for f in findings)
             unver_left = sum(f["source_id"] == "UNVERIFIED" for f in is_open)
@@ -402,6 +442,49 @@ with right, st.container(key="rv_results"):
 
 # ---------------------------------------------------------------- all drafts, with who checked and who decided
 st.markdown("""<style>
+.tr-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin:14px 0 10px; }
+.tr-eb { font-size:.64rem; letter-spacing:.16em; font-weight:700; color:#12917F; }
+.tr-title { font-family:'Instrument Serif', Georgia, serif; font-size:1.55rem; color:#1B2A4E; line-height:1.15; margin:2px 0 4px; }
+.tr-meta { font-size:.8rem; color:#5A6480; } .tr-meta b { color:#1B2A4E; }
+.tr-badge { font-size:.72rem; font-weight:700; padding:5px 12px; border-radius:999px; white-space:nowrap; }
+.tr-badge.ok { background:#E8F6F2; color:#0B5E52; } .tr-badge.bad { background:#FDECEC; color:#B42318; }
+.tr-badge.wait { background:#FFF4E0; color:#8A4B06; }
+.tr-steps { display:flex; align-items:center; margin:4px 0 16px; background:#fff; border:1px solid #E2E7F0; border-radius:14px;
+  padding:12px 18px; }
+.tr-s { display:flex; align-items:center; gap:8px; flex:1; font-size:.8rem; color:#8A93A6; font-weight:600; position:relative; }
+.tr-s:not(:last-child)::after { content:""; flex:1; height:2px; background:#E6EAF0; margin:0 12px; border-radius:2px; }
+.tr-s.on:not(:last-child)::after { background:#12917F; }
+.tr-s i { font-style:normal; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:.74rem; font-weight:700; background:#F3F5F9; color:#8A93A6; flex:none; }
+.tr-s.on { color:#1B2A4E; } .tr-s.on i { background:#12917F; color:#fff; }
+.tr-s.on.bad i { background:#D93025; } .tr-s.on.bad { color:#B42318; }
+.st-key-tr_trail, .st-key-tr_content { background:#fff; border:1px solid #E2E7F0; border-radius:16px; padding:16px 18px;
+  box-shadow:0 1px 2px rgba(20,24,33,.03), 0 8px 24px rgba(20,24,33,.04); }
+.tr-h { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+.tr-h b { color:#1B2A4E; font-size:1rem; } .tr-h small { color:#8A93A6; font-size:.74rem; }
+.tr-list { position:relative; }
+.tr-ev { display:flex; gap:12px; position:relative; padding-bottom:14px; }
+.tr-ev:not(:last-child)::before { content:""; position:absolute; left:13px; top:28px; bottom:0; width:2px; background:#EEF1F5; }
+.tr-ev > i { font-style:normal; width:28px; height:28px; border-radius:50%; flex:none; display:flex; align-items:center;
+  justify-content:center; font-size:.8rem; font-weight:700; color:var(--c); background:color-mix(in srgb, var(--c) 12%, #fff);
+  border:1px solid color-mix(in srgb, var(--c) 35%, #fff); z-index:1; }
+.tr-b { flex:1; min-width:0; padding-top:3px; }
+.tr-l { display:flex; align-items:center; flex-wrap:wrap; font-size:.84rem; color:#33415C; }
+.tr-l b { color:#1B2A4E; font-weight:650; }
+.tr-av { width:20px; height:20px; border-radius:50%; background:#1B2A4E; color:#fff; font-size:.56rem; font-weight:700;
+  display:inline-flex; align-items:center; justify-content:center; margin-right:7px; }
+.tr-t { margin-left:auto; font-size:.72rem; color:#8A93A6; white-space:nowrap; cursor:help; padding-left:10px; }
+.tr-d { font-size:.76rem; color:#5A6480; margin-top:4px; }
+.tr-d code { font-size:.7rem; background:#F3F5F9; padding:1px 6px; border-radius:5px; color:#1B2A4E; }
+.tr-d q { display:block; quotes:"“" "”"; background:#FDF3F2; border-left:3px solid #D93025; border-radius:8px; padding:7px 10px;
+  color:#5A2B26; font-size:.8rem; margin-top:2px; }
+.tr-ev[style*="#0B5E52"] .tr-d q { background:#F0F8F6; border-left-color:#12917F; color:#0B4A40; }
+.tr-note { font-size:.78rem; color:#5A6480; background:#F7F8FB; border-radius:10px; padding:8px 10px; margin:6px 0; }
+.tr-fs > div { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:9px 0; border-top:1px solid #F0F2F6; }
+.tr-fs > div:first-child { margin-top:8px; }
+.tr-fs code { font-size:.7rem; background:#F3F5F9; padding:1px 6px; border-radius:5px; color:#1B2A4E; }
+.tr-fs p { flex-basis:100%; margin:2px 0 0; font-size:.8rem; color:#33415C; } .tr-fs small { color:#5A6480; }
+.tr-chip { font-size:.66rem; font-weight:700; padding:2px 8px; border-radius:999px; }
 .dr-wrap { background:#fff; border:1px solid #E2E7F0; border-radius:16px; overflow:hidden; margin-top:6px;
   box-shadow:0 1px 2px rgba(20,24,33,.03), 0 8px 24px rgba(20,24,33,.04); }
 .dr-t { width:100%; border-collapse:collapse; font-size:.82rem; }
@@ -468,31 +551,100 @@ if shown:
     opts = {f"#{x['id']} · {x['title']}": x for x in shown}
     sel = st.selectbox("Open a draft to see its full trail", list(opts), key="dr_open")
     d_ = opts[sel]
-    COLORS = {"created": "#3C4FB8", "reviewed": "#12917F", "finding_accepted": "#12917F", "finding_edited": "#B45309",
-              "finding_rejected": "#D93025", "approved": "#12917F", "changes_requested": "#D93025",
-              "rechecked": "#12917F", "new_version": "#3C4FB8"}
-    VERB = {"created": "created the draft", "reviewed": "ran the Inkwise check", "finding_accepted": "accepted a finding",
-            "finding_edited": "edited a suggested fix", "finding_rejected": "rejected a finding",
-            "approved": "approved it", "changes_requested": "sent it back", "rechecked": "re-checked it after a fact renewal",
-            "new_version": "saved a new version"}
+    import re as _re
+    hist = []
     try:
         hist = [h for h in services.draft_history(d_["id"]) if h["kind"] == "event"]
     except Exception:
-        hist = []
+        pass
+    EV = {  # action: (icon, colour, verb)
+        "created": ("✎", "#3C4FB8", "created the draft"), "reviewed": ("⚡", "#12917F", "ran the Inkwise check"),
+        "finding_accepted": ("✓", "#12917F", "accepted a finding"), "finding_edited": ("✎", "#B45309", "edited a fix"),
+        "finding_rejected": ("✕", "#8A93A6", "rejected a finding"), "approved": ("✓", "#0B5E52", "approved it"),
+        "changes_requested": ("↩", "#D93025", "sent it back"), "rechecked": ("↻", "#12917F", "re-checked it after a fact renewal"),
+        "new_version": ("✎", "#3C4FB8", "saved a new version")}
     who = lambda u: "Inkwise" if u in ("inkwise-ai", "system") else theme.full_name(u)
-    tl = "".join(f'<div style="--c:{COLORS.get(h["action"], "#8A93A6")}"><b>{html.escape(who(h["user"]))}</b> '
-                 f'{html.escape(VERB.get(h["action"], h["action"].replace("_", " ")))}'
-                 f'<small>{html.escape(h["at"][:16].replace("T", " "))} UTC · {html.escape(h.get("detail", ""))}</small></div>'
-                 for h in hist)
-    c1, c2 = st.columns([1, 1.2], gap="large")
-    with c1:
-        st.markdown(f'<div class="iw-panel"><h3>Trail</h3><div class="sub">From the audit log, oldest first</div>'
-                    f'<div class="tl">{tl or "<small>No events yet.</small>"}</div></div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown(f'<div class="iw-panel"><h3>{html.escape(d_["title"])}</h3><div class="sub">by '
-                    f'{html.escape(theme.full_name(d_["author"]))}</div><div class="iw-text">{html.escape(d_["text"])}</div>'
-                    '</div>', unsafe_allow_html=True)
-        for f in d_["findings"]:
-            st.markdown(f'- **{f["status"].title()}** · `{f["source_id"]}` · “{f["span"]}” → {f["suggested_fix"]}')
+
+    def detail(h):
+        d = _re.sub(r"^v\d+ · ", "", h.get("detail", "") or "")
+        act = h["action"]
+        if act in ("approved", "changes_requested"):
+            d = _re.sub(r"^(manager|reviewer|admin)( · )?", "", d).strip()
+            return f'<q>{html.escape(d)}</q>' if d else ""
+        if act.startswith("finding_"):
+            m = _re.match(r"f-0*(\d+) \((\w+)\)", d)
+            return f"Finding {m.group(1)} · <code>{m.group(2)}</code>" if m else html.escape(d)
+        if act == "created":
+            return ""
+        return html.escape(d.replace("(seeded demo)", "").strip())
+
+    rows = []
+    for h in hist:
+        icon, col, verb = EV.get(h["action"], ("•", "#8A93A6", h["action"].replace("_", " ")))
+        name = who(h["user"])
+        exact = h["at"][:16].replace("T", " ") + " UTC"
+        dd = detail(h)
+        rows.append(f'<div class="tr-ev" style="--c:{col}"><i>{icon}</i><div class="tr-b">'
+                    f'<div class="tr-l"><span class="tr-av">{html.escape(theme._initials(name))}</span>'
+                    f'<b>{html.escape(name)}</b>&nbsp;{html.escape(verb)}'
+                    f'<span class="tr-t" title="{html.escape(exact)}">{html.escape(theme._ago(h["at"]) or exact)}</span></div>'
+                    + (f'<div class="tr-d">{dd}</div>' if dd else "") + '</div></div>')
+
+    acts = {h["action"] for h in hist}
+    done_dec = (any(a.startswith("finding_") for a in acts) or not d_["findings"]
+                or all(f["status"] != "open" for f in d_["findings"]))       # decisions saved with the draft count too
+    status = d_["status"]
+    steps = [("Created", "created" in acts or bool(hist), ""), ("Checked", "reviewed" in acts, ""),
+             ("Decided", done_dec, ""),
+             ("Approved" if status == "approved" else "Sent back" if status == "rejected" else "Sign-off",
+              status in ("approved", "rejected"), "bad" if status == "rejected" else "")]
+    stepper = "".join(f'<div class="tr-s {"on" if ok else ""} {cls}"><i>{"✓" if ok and cls != "bad" else "↩" if ok else n + 1}</i>'
+                      f'<span>{lbl}</span></div>' for n, (lbl, ok, cls) in enumerate(steps))
+    fs = d_["findings"]
+    cnt = {k: sum(f["status"] == k for f in fs) for k in ("accepted", "edited", "rejected", "open")}
+    STAT = {"approved": ("Approved", "ok"), "rejected": ("Sent back", "bad"), "pending": ("Waiting for sign-off", "wait")}
+    lbl, cls = STAT.get(status, (status, "wait"))
+    st.markdown(
+        f'<div class="tr-head"><div><div class="tr-eb">DRAFT #{html.escape(str(d_["id"]))} · V{d_.get("version", 1)}</div>'
+        f'<div class="tr-title">{html.escape(d_["title"])}</div>'
+        f'<div class="tr-meta">by <b>{html.escape(theme.full_name(d_["author"]))}</b> · sent {html.escape(theme._ago(d_["submitted_at"]))}'
+        f' · {len(fs)} finding{"s" if len(fs) != 1 else ""}'
+        + "".join(f' · {n} {k}' for k, n in cnt.items() if n) + f'</div></div>'
+        f'<span class="tr-badge {cls}">{lbl}</span></div><div class="tr-steps">{stepper}</div>', unsafe_allow_html=True)
+
+    c1, c2 = st.columns([1, 1.15], gap="large")
+    with c1, st.container(key="tr_trail"):
+        st.markdown('<div class="tr-h"><b>Trail</b><small>from the audit log, oldest first</small></div>'
+                    f'<div class="tr-list">{"".join(rows) or "<small>No events yet.</small>"}</div>', unsafe_allow_html=True)
+    with c2, st.container(key="tr_content"):
+        st.markdown('<div class="tr-h"><b>What was sent</b><small>text, image, decisions</small></div>',
+                    unsafe_allow_html=True)
+        img_b = services.submission_image(d_["id"]) if hasattr(services, "submission_image") else None
+        if img_b:
+            ifs = [dict(f, span_text=f.get("span", "")) for f in fs]
+            rh.locate(ifs, d_["text"])
+            st.image(theme.annotated_image(img_b, [f for f in ifs if f.get("where") == "image"]), width="stretch")
+        body = d_["text"]
+        if body.startswith("[Image only]"):
+            st.markdown('<div class="tr-note">Image-only campaign' + (": the text below was read from the image."
+                        if body.replace("[Image only]", "").strip() not in ("", "campaign image") else
+                        "; no text was read from it (AI was not connected).") + '</div>', unsafe_allow_html=True)
+            body = body.replace("[Image only]", "").strip()
+            if body == "campaign image":            # nothing was read from the image (AI was off)
+                body = ""
+        if body:
+            st.markdown(f'<div class="iw-text" style="font-size:.88rem">{html.escape(body)}</div>', unsafe_allow_html=True)
+        elif not img_b:
+            st.markdown('<div class="tr-note">No text was sent with this draft.</div>', unsafe_allow_html=True)
+        CH = {"accepted": ("Accepted", "#E8F6F2", "#0B5E52"), "edited": ("Edited", "#E8EEFB", "#1A4FB0"),
+              "rejected": ("Rejected", "#F3F5F9", "#5A6480"), "open": ("Open", "#FFF4E0", "#8A4B06")}
+        st.markdown('<div class="tr-fs">' + "".join(
+            f'<div><span class="tr-chip" style="background:{CH.get(f["status"], CH["open"])[1]};'
+            f'color:{CH.get(f["status"], CH["open"])[2]}">{CH.get(f["status"], CH["open"])[0]}</span>'
+            f'<code>{html.escape(f["source_id"])}</code>{" 🖼" if f.get("where") == "image" else ""}'
+            f'<p>“{html.escape(f["span"][:90])}”<br><small>→ {html.escape(f["suggested_fix"][:120])}</small></p></div>'
+            for f in fs) + '</div>' if fs else '<div class="tr-note">No findings: this draft matched the brand kit.</div>',
+            unsafe_allow_html=True)
 
 theme.ai_banner()
+theme.footer()

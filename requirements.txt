@@ -1,4 +1,4 @@
-streamlit>=1.40
+streamlit>=1.50,<=1.65  # tested on 1.50 (Python 3.9) and 1.65
 pydantic>=2.7
 google-genai>=1.0
 chromadb>=0.5

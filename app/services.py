@@ -31,7 +31,8 @@ REVIEW_CACHE_SIZE = 200
 WORKFLOW_FUNCS = ["submit_for_approval", "list_submissions", "decide_submission",
                   "get_recent_activity", "get_dashboard_stats"]
 R3_FUNCS = ["authenticate", "demo_accounts", "fact_register", "fact_owners", "can_renew", "renew_fact",
-            "guideline_stats", "repeat_issues", "suggest_rewording", "accept_rewording", "global_audit", "health"]
+            "guideline_stats", "repeat_issues", "suggest_rewording", "accept_rewording", "global_audit", "health",
+            "review_times"]
 
 _PARTS = {
     "review": ("AI review engine", "engine/review.py with review_text(text)", "Riyana, Steps 4 and 8"),
@@ -277,6 +278,61 @@ def _demo_reviews() -> dict:
     return _demo
 
 
+MAX_DOC_BYTES = 5 * 1024 * 1024
+
+
+def extract_document(data: bytes, filename: str) -> dict:
+    """Text from an uploaded PDF, Word (.docx) or text file, ready for the Review box.
+
+    Returns {"text", "pages", "truncated", "chars"}; raises InputError with a plain message for files we
+    cannot read (scanned PDFs without text, old .doc files, encrypted PDFs, empty files)."""
+    name = (filename or "").lower()
+    if not data:
+        raise InputError("That file is empty.")
+    if len(data) > MAX_DOC_BYTES:
+        raise InputError(f"That file is {len(data) / 1e6:.1f} MB; the limit is 5 MB.")
+    pages = 1
+    try:
+        if name.endswith(".pdf") or data[:4] == b"%PDF":
+            import pymupdf
+            with pymupdf.open(stream=data, filetype="pdf") as doc:
+                if doc.needs_pass:
+                    raise InputError("That PDF is password-protected. Remove the password and try again.")
+                pages = doc.page_count
+                text = "\n\n".join(p.get_text("text").strip() for p in doc)
+        elif name.endswith(".docx"):
+            import io
+            import docx
+            d = docx.Document(io.BytesIO(data))
+            parts = [p.text for p in d.paragraphs if p.text.strip()]
+            for table in d.tables:
+                for row in table.rows:
+                    parts.append(" | ".join(c.text.strip() for c in row.cells if c.text.strip()))
+            text = "\n\n".join(parts)
+        elif name.endswith((".txt", ".md")):
+            text = data.decode("utf-8", errors="replace")
+        elif name.endswith(".doc"):
+            raise InputError("Old Word .doc files are not supported. Save it as .docx or PDF and try again.")
+        else:
+            raise InputError("Upload a PDF, Word (.docx) or text file.")
+    except InputError:
+        raise
+    except Exception as e:
+        raise InputError(f"Could not read that file ({type(e).__name__}). Try saving it again as PDF or .docx.")
+    import re as _re
+    text = _re.sub(r"[ \t]+\n", "\n", text.replace("\r\n", "\n"))
+    text = _re.sub(r"\n{3,}", "\n\n", text).strip()
+    if not text:
+        raise InputError("No text found in that file. If it is a scanned PDF, copy the text in by hand "
+                         "(scanned images are not read yet).")
+    chars = len(text)
+    truncated = chars > MAX_REVIEW_CHARS
+    if truncated:
+        cut = text[:MAX_REVIEW_CHARS]
+        text = cut[:cut.rfind(" ")] if " " in cut[-200:] else cut
+    return {"text": text, "pages": pages, "truncated": truncated, "chars": chars}
+
+
 def validate_text(text: str) -> str:
     text = (text or "").replace("\r\n", "\n")
     if not text.strip():
@@ -492,6 +548,69 @@ def demo_accounts() -> list[dict]:
 
 # ---------------------------------------------------------------- fact register (Improvement 2)
 
+def notifications(user: str, role: str, names: dict | None = None) -> list[dict]:
+    """What needs this person's attention, newest first: [{id, icon, title, detail, at, page}].
+
+    Manager / Reviewer: drafts sent for approval by someone else.
+    Creator:            their drafts that were approved or sent back (last 14 days), and still waiting.
+    Admin:              expired and expiring-soon facts, and guidelines that look unclear.
+    Built from the workspace data on every page load, so a draft sent in another session shows up
+    for the manager on their next click."""
+    names = names or {}
+    nm = lambda u: names.get(u, u)
+    role = (role or "").lower()
+    out: list[dict] = []
+    try:
+        subs = list_submissions()
+    except Exception:
+        subs = []
+    if role in ("manager", "reviewer"):
+        for s in subs:
+            if s["status"] == "pending" and s["author"] != user:
+                n = len(s["findings"])
+                out.append({"id": f"sub-{s['id']}-sent", "icon": "📨", "page": "pages/Approvals.py", "at": s["updated_at"],
+                            "title": f"{nm(s['author'])} sent “{s['title']}” for your approval",
+                            "detail": f"{n} finding{'s' if n != 1 else ''}, all decided by the creator"})
+    if role == "creator":
+        cutoff = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=14)).strftime("%Y-%m-%d %H:%M")
+        for s in subs:
+            if s["author"] != user:
+                continue
+            if s["status"] in ("approved", "rejected") and (s.get("decided_at") or "") >= cutoff:
+                ok = s["status"] == "approved"
+                out.append({"id": f"sub-{s['id']}-{s['status']}", "icon": "✅" if ok else "↩️",
+                            "page": "pages/History.py", "at": s["decided_at"],
+                            "title": f"{nm(s['decided_by'])} {'approved' if ok else 'sent back'} “{s['title']}”",
+                            "detail": (f"Comment: {s['comment']}" if s.get("comment") else
+                                       "Ready to publish" if ok else "Open it to see what to change")})
+            elif s["status"] == "pending":
+                out.append({"id": f"sub-{s['id']}-waiting", "icon": "⏳", "page": "pages/History.py",
+                            "at": s["updated_at"], "title": f"“{s['title']}” is waiting for a manager",
+                            "detail": "You will be notified when it is approved or sent back"})
+    if role == "admin":
+        try:
+            for f in fact_register():
+                if f["status"] in ("expired", "expiring_soon"):
+                    gone = f["status"] == "expired"
+                    out.append({"id": f"fact-{f['id']}-{f['status']}", "icon": "⚠️" if gone else "⏰",
+                                "page": "pages/Fact_Register.py", "at": f.get("expires_on") or "",
+                                "title": (f"{f['id']} expired on {f['expires_on']}" if gone else
+                                          f"{f['id']} expires in {f['days_left']} days"),
+                                "detail": f"Owner: {f['owner']} · {f['statement'][:70]}"})
+        except Exception:
+            pass
+        try:
+            for g in guideline_stats():
+                if g.get("unclear") and not g.get("accepted_rewording"):
+                    out.append({"id": f"guide-{g['source_id']}-unclear", "icon": "💡", "page": "pages/Insights.py",
+                                "at": "", "title": f"{g['source_id']} looks unclear to reviewers",
+                                "detail": g.get("reason", "Consider a clearer wording")})
+        except Exception:
+            pass
+    out.sort(key=lambda n: n["at"] or "", reverse=True)
+    return out
+
+
 def fact_register(owner: str | None = None, status: str | None = None) -> list[dict]:
     return [_plain(f) for f in _wf().fact_register(owner=owner or None, status=status or None)]
 
@@ -516,6 +635,10 @@ def renew_fact(fact_id: str, user: str, role: str, new_expires_on, note: str = "
 
 def guideline_stats(date_from=None, date_to=None, role: str | None = None) -> list[dict]:
     return [_plain(g) for g in _wf().guideline_stats(date_from, date_to, role or None)]
+
+
+def review_times(date_from=None, date_to=None) -> dict:
+    return _plain(_wf().review_times(date_from, date_to))
 
 
 def repeat_issues(group_by: str = "category", date_from=None, date_to=None) -> list[dict]:

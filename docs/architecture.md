@@ -29,7 +29,7 @@ flowchart LR
 | Module | Responsibility |
 |---|---|
 | `engine/schemas.py` | Shared data contracts: `Finding`, `Guideline`, `Fact` (with expiry), `Term`, `ReviewResult` |
-| `engine/knowledge.py` | Loads and validates the brand kit; semantic search (ChromaDB + Gemini embeddings) with BM25 keyword fallback |
+| `engine/knowledge.py` | Loads and validates the brand kit; BM25 keyword search by default (fast, no API call), semantic search with ChromaDB + Gemini embeddings when `INKWISE_SEMANTIC=1` |
 | `engine/redact.py` | Masks personal data before any API call; restores it only for display |
 | `engine/rules.py` | Deterministic checks: banned glossary variants, expired facts (numbers normalised: 2M = 2 million), readability |
 | `engine/review.py` | Builds the prompt from retrieved sources, calls Gemini, validates every AI finding, merges with rule findings |

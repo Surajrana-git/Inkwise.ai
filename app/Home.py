@@ -45,6 +45,7 @@ def splash() -> None:
     st.rerun()
 
 
+theme.restore_session()          # a refresh keeps the demo person signed in (no splash again)
 if not st.session_state.get("splash_done") and not st.session_state.get("auth"):
     splash()
     st.stop()
@@ -100,8 +101,18 @@ try:
 except services.BackendNotConnected as e:
     wf_error = e
 
-# primary action per role
-a1, a2, a3, _ = st.columns([1.3, 1.3, 1.3, 4])
+# primary action per role: page links styled as buttons (first one filled)
+st.markdown("""<style>
+.st-key-home_actions [data-testid="stPageLink"] a { border:1px solid #CFD8E6 !important; border-radius:10px !important;
+  background:#fff !important; padding:9px 14px !important; justify-content:center; transition:all .15s ease; }
+.st-key-home_actions [data-testid="stPageLink"] a:hover { border-color:#12917F !important; box-shadow:0 6px 16px rgba(18,145,127,.12); }
+.st-key-home_actions [data-testid="stPageLink"] a p { font-weight:600 !important; color:#1B2A4E !important; font-size:.86rem !important; }
+.st-key-home_actions [data-testid="stColumn"]:first-child [data-testid="stPageLink"] a { background:#12917F !important;
+  border-color:#12917F !important; }
+.st-key-home_actions [data-testid="stColumn"]:first-child [data-testid="stPageLink"] a p { color:#fff !important; }
+</style>""", unsafe_allow_html=True)
+with st.container(key="home_actions"):
+    a1, a2, a3, _ = st.columns([1.3, 1.3, 1.3, 4])
 def _go(col, label, page, primary=False, key=None):
     with col:
         try:
@@ -190,9 +201,7 @@ with right:
                             st.session_state.rv_text = sample["text"]
                             st.session_state.rv_title = sample["title"]
                     st.switch_page(page)
-        if st.button("Hide this guide", key="tour_hide"):
-            st.session_state.tour_hidden = True
-            st.rerun()
+        st.button("Hide this guide", key="tour_hide", on_click=st.session_state.__setitem__, args=("tour_hidden", True))
         st.write("")
 
     # measured accuracy
@@ -225,3 +234,4 @@ if stats.get("seeded_at"):
     st.caption(f"Demo workspace: sample history was loaded on {stats['seeded_at']} UTC and comes back automatically "
                "if the free host restarts.")
 theme.ai_banner()
+theme.footer()

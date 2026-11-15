@@ -1,134 +1,134 @@
-# InkWise AI
+# Inkwise.ai
 
-**Brand governance that checks content before it is published, and shows its evidence.**
+**Content governance before you publish. Every claim, traced to its source.**
 
-Every finding points to the exact brand guideline, approved fact or glossary term it relates to, or is clearly marked **UNVERIFIED**. InkWise explains each issue, suggests a fix that keeps the writer's intent, and leaves every decision to a human.
+Inkwise checks campaign copy and creatives against a brand's guidelines, approved facts and glossary. Every finding
+cites the exact source it relies on, or is marked **UNVERIFIED**. A person decides every change, and a manager signs off
+before anything counts as approved.
 
 **Live demo:** https://inkwiseai-jobnp9jkgfoutv5jeuvvs7.streamlit.app/
-
-Team **DECODIANS** · CodeTitans India 2026 (Inkloom AI Hackathon)
+**DECODIANS** · CodeTitans India 2026 (title sponsor Inkloom) · Round 3: The Finish
 
 | Member | Role | Built |
 |---|---|---|
-| Suraj Kumar (Lead) | Backend | Knowledge base, review workflow and audit log, deployment, reliability |
-| Riyana S | AI / ML | Gemini review engine with citations, rule checks, privacy masking, evaluation |
-| Aashi Yadav | Frontend | Streamlit app: review screen with inline highlights, approvals, history, knowledge base |
+| Suraj Kumar (lead) | Backend | Workflow, audit log, fact register, insights engine, reliability, deployment, app shell |
+| Riyana S | AI / ML | Gemini review engine, evidence verification, rule checks, privacy masking, first image checks, evaluation |
+| Aashi Yadav | Frontend | Review screen: inline highlights, evidence quotes, expiry badges, input warnings |
 | Pritha S | Product / Research | Lumora brand kit, user testing, documentation |
 
 ---
 
-## The problem
+## Try it in 3 minutes (no explanation needed)
 
-Organisations publish content through many employees, agencies and AI tools. Wrong claims, outdated statistics, inconsistent product names and off-brand language slip through, and manual review is slow and inconsistent. Generic tone checkers say *that* something is off, but rarely *why* or *according to which rule*.
+Open the live link and pick a person on the sign-in page. No password is needed. You can switch person at any time from
+the name in the top-right corner, and the **Help** tab answers every question below.
 
-## What InkWise does
-
-1. **Review**: a creator pastes content. InkWise checks it against the brand kit: guidelines, facts with owners and expiry dates, and approved terminology.
-2. **Explain**: each issue is highlighted in the text, with the source it relates to, why it matters, a suggested fix and a confidence score. Anything no approved source supports is marked **UNVERIFIED** instead of guessed.
-3. **Decide**: the creator accepts, edits or rejects each finding, then sends the content for approval.
-4. **Approve**: a manager or reviewer approves or requests changes, with a comment. Nobody can approve their own content.
-5. **Track**: every version, decision and approval is saved in an audit log. Reviewer decisions are recorded per guideline, the base for spotting unclear guidelines (Round 3).
-
-### What makes it different
-- **No source, no claim:** findings cite their source; unsupported claims are marked UNVERIFIED.
-- **Fact freshness:** approved facts expire, so outdated numbers ("2 million users") are caught, even when reworded ("2M").
-- **Rules + AI:** exact checks (banned terms, expired facts, readability) are deterministic; judgement calls (claims, tone, messaging, accessibility) go to Gemini.
-- **Privacy first:** names, phone numbers, emails and ID numbers are masked before any text is sent to an AI service.
-- **Reliable:** if a Gemini model is overloaded, InkWise switches to a backup model. If AI is unavailable, the user still gets rule checks and a clear warning.
-
-## Try the demo
-
-Open the live link. In the sidebar, type any name and pick a role (there is no password in the demo):
-
-| Name | Role | Try this |
+| Person | Role | Try this |
 |---|---|---|
-| `asha` | Creator | Review → paste the sample below → accept or edit findings → **Send for approval** |
-| `meera` | Manager | Approvals → approve or reject with a comment → History |
+| **Asha Menon** | Creator | Review → load **Launch post** → **Run pre-publication check** → Accept / Edit / Reject each finding (the draft updates live) → **Send for approval**. Add the **sample banner** to check an image too. |
+| **Meera Kapoor** | Manager | Approvals → read the readiness checks and the creator's decisions → **Approve** or **Send back** (a comment is required). Insights → unclear guidelines, review times. |
+| **Ravi Sharma** | Admin | Fact Register → renew an expired fact → open drafts that cite it are re-checked. Accept a clearer guideline wording in Insights. |
 
-Use two different names: the creator cannot approve their own content.
+The **Review** page also shows a five-step guided story that switches to the right person for each step.
 
-**Sample text:**
-> Join 2 million happy users of LumoraPay! We are India's fastest payment app and every transfer arrives instantly. Tap the green button above to sign up now or miss your chance.
+All data is synthetic: **Lumora** is a fictional fintech brand written by the team.
 
-Expected: expired fact (F01), banned product name (T01), unsupported claims (G07), colour-only instruction (G15), pushy tone (G03).
+## What it does
 
-All demo data is synthetic: **Lumora** is a fictional fintech brand created by the team.
+1. **Check:** paste copy, import a **PDF, Word or text file**, and optionally add the campaign **image**. Rules run first
+   (glossary, expired and expiring facts, readability, image colour and contrast), then Gemini looks for claims, tone,
+   messaging and accessibility issues, using only the brand-kit entries it is shown.
+2. **Explain:** each finding is highlighted in the text (every occurrence), names its source, quotes the evidence with the
+   matching words highlighted, and has an **Open in Brand Kit** link to the full source. Image findings are boxed on the
+   image.
+3. **Decide:** Accept, Edit or Reject. The draft updates live as tracked changes; **Final copy** shows the clean text.
+4. **Sign off:** only a Manager approves or sends back, never on their own draft.
+5. **Audit:** History has every draft with who decided what and when, a **PDF audit report** per draft and CSV export.
+6. **Improve:** Insights shows guidelines people keep overriding, repeat issues by category, creator or team, and how
+   long each review stage takes.
+7. **Stay informed:** a notification bell tells a Manager when a draft arrives, the creator when it is approved or sent
+   back, and an Admin when a fact expires. A browser refresh keeps you signed in on the same page.
 
-## Screenshots
+## The three Round 3 improvements (committed in Round 2)
 
-1.Home Dashboard
-<img width="1600" height="757" alt="image" src="https://github.com/user-attachments/assets/82a10684-9c0d-4462-be1c-1ec3cfb90b7f" />
+Details and proof for each item: [docs/round3_delivery.md](docs/round3_delivery.md).
 
-2.Review Page with Findings
-<img width="1600" height="763" alt="image" src="https://github.com/user-attachments/assets/8fb9135e-de75-4299-b712-e625156fb3cf" />
-
-3.Approvals Page
-<img width="1600" height="757" alt="image" src="https://github.com/user-attachments/assets/4a572241-7221-4d2a-95e0-96595ee00889" />
-
-4.History Page
-<img width="1600" height="762" alt="image" src="https://github.com/user-attachments/assets/9aeeab82-71c1-483d-ad9a-ddb55fd22c66" />
-
-5.Knowledge Base
-<img width="1600" height="761" alt="image" src="https://github.com/user-attachments/assets/203d4d24-2b3a-4b32-89ed-afe52f1fb822" />
+1. **Evidence-grounded findings:** the code verifies that the quoted evidence really exists in the cited source,
+   otherwise the finding becomes UNVERIFIED; evidence is highlighted inside the source quote; one click opens the full
+   source; images get the same finding format (WCAG contrast and brand colours without AI, logo and text-in-image with
+   Gemini Vision).
+2. **Fact freshness:** facts have owners and expiry dates; expired **and expiring-soon** facts are flagged on every
+   occurrence; figures match in any form (2M = 2 million = 20 lakh = 0.2 crore, two million, 2,000,000, rounded within
+   10%); the Fact Register is sorted by risk with owner filters; renewing a fact is logged and re-checks open drafts.
+   A separate planted-fact test group has its own recall.
+3. **Guideline Clarity Insights:** override and reject rates per guideline from real logged decisions, likely-unclear
+   guidelines by documented thresholds, repeat issues by category, creator or team, a suggested clearer wording that an
+   Admin accepts (logged), filters by date and role, and measured review times.
 
 ## Evaluation
 
-We measure InkWise on a labelled test set of 100 samples (25 clean, 75 with 1–3 planted errors), where every label is tied to a real brand-kit ID. See [eval/README.md](eval/README.md).
+Labelled sets: `eval/test.jsonl` (100 samples, 143 labelled errors, 25 clean) and `eval/dev.jsonl` (50 samples, used
+for tuning). Every label points to a real brand-kit ID. Details: [eval/README.md](eval/README.md).
 
-| Setup | Precision | Recall | Citation accuracy | Clean samples wrongly flagged |
+| Setup (test set) | Precision | Recall | Citation accuracy | Clean samples wrongly flagged |
 |---|---:|---:|---:|---:|
-| Rules only (no AI) | 96.1% | 51.0% | 97.3% | 1 / 25 |
-| Rules + AI | 100.0% | 1.2% | 100.0% | 0 / 20 |
+| **Rules + Gemini, current engine** (`eval/results.md`, 100/100 answered) | **88.2%** | **99.3%** | **95.1%** | **5 / 25** |
+| Rules + Gemini, start of Round 3 | 83.5% | 95.8% | 83.2% | 10 / 25 |
+| Rules only, current engine | 95.0% | 53.1% | 97.4% | 2 / 25 |
 
-Rules alone catch terminology (50/50) and expired facts (23/26). The AI review adds claims, tone, accessibility and messaging.
+Recall by type with Gemini: terminology 50/50, claims 23/23, outdated facts 26/26, messaging 12/12,
+accessibility 12/12, tone 19/20. Remaining wrong citations: G07 (5), F01 (1), T01 (1).
 
-Run it yourself: `python eval/run_eval.py --split test` (add `--rules-only` for the baseline).
+**Fact-freshness test group** (`eval/fact_cases.jsonl`, rules only, fixed dates): **30/30 cases, recall 100%,
+precision 100%**. The previous checker scored 18/30 on the same cases.
+
+Run them yourself:
+```bash
+python eval/run_eval.py --split test            # rules + Gemini (needs GEMINI_API_KEY)
+python eval/run_eval.py --split test --rules-only
+python eval/run_fact_eval.py                    # fact-freshness group, writes eval/fact_results.md
+```
 
 ## Architecture
 
-A pure Python engine (`engine/`) with a Streamlit UI (`app/`) on top. Full design, key decisions and limitations: [docs/architecture.md](docs/architecture.md).
+A pure-Python engine (`engine/`) with a Streamlit app (`app/`) on top. Design and decisions:
+[docs/architecture.md](docs/architecture.md).
 
 ```text
 engine/
-  schemas.py     data contracts: Finding, Guideline, Fact, Term, ReviewResult
-  knowledge.py   brand kit loading and search (ChromaDB + Gemini embeddings, keyword fallback)
-  redact.py      masks personal data before any API call
-  rules.py       banned terms, expired facts, readability
-  review.py      Gemini review with citations, backup models, validation
-  workflow.py    roles, versions, decisions, approvals, audit log (SQLite)
-app/             Streamlit pages: Home, Review, Approvals, History, Knowledge Base
-data/brand_kit/  Lumora guidelines, facts and glossary (synthetic)
-eval/            labelled dev/test sets and evaluation script
-docs/            architecture, deployment, disclosures, user testing
-tests/           55 automated tests
+  schemas.py     data contracts: Finding (with evidence, owner, freshness, image box), Guideline, Fact, Term
+  knowledge.py   brand kit loading and search (keyword search by default, embeddings optional)
+  redact.py      masks names, emails, phone numbers and IDs before any AI call
+  rules.py       glossary, expired / expiring facts (unit-aware), readability
+  review.py      Gemini review with evidence verification, backup models, hard time limits
+  visual.py      image checks: palette (V01), WCAG contrast (V02), logo + text reading with Gemini (V03)
+  workflow.py    roles, versions, decisions, approvals, fact register, insights, audit log (SQLite)
+app/             Streamlit pages: Home, Review, Approvals, Fact Register, Insights, History, Brand Kit, Help
+data/brand_kit/  Lumora guidelines (15), facts (20), glossary (15), image rules and palette
+eval/            labelled sets, fact-freshness group, evaluation scripts and results
+docs/            delivery, architecture, testing, responsible design, limitations and roadmap, deploy, disclosures
+tests/           194 automated tests
 ```
 
 ## Run locally
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env                 # add GEMINI_API_KEY (optional: rule checks work without it)
+source .venv/bin/activate              # Windows: .venv\Scripts\activate
+pip install -r requirements.txt        # macOS with Python 3.9: pip install "cryptography<45" first
+cp .env.example .env                   # add GEMINI_API_KEY (optional: every rule check works without it)
 streamlit run app/Home.py
-pytest                               # 55 tests
+pytest                                 # 194 tests
 ```
 
-## Three improvements for Round 3
+## Documentation
 
-1. **Evidence-grounded findings:** every finding cites its source or is marked UNVERIFIED; measured by citation accuracy.
-2. **Fact freshness:** approved facts with owners and expiry dates; outdated claims are caught and the owner is named.
-3. **Guideline Clarity Insights:** reviewer accept, edit and reject decisions show which guidelines are unclear and which mistakes repeat.
-
-## Roadmap
-
-- **Round 3:** the three improvements above, plus a **Visual Brand Inspector** (brand-colour and contrast checks on images, logo presence) and PDF/DOCX upload.
-- **After the event:** voice input, CMS and Slack integrations, a managed database for production.
-
-## User testing
-
-Five review-and-approval workflows on the live app: [docs/docs/user_testing.md](docs/docs/user_testing.md).
-
-## Responsible design and disclosures
-
-Synthetic data only; personal data masked before AI calls; AI use disclosed in the app; humans approve every change; every action logged. APIs, models, datasets, libraries and AI-assisted development: [docs/disclosures.md](docs/disclosures.md).
+| Document | What it covers |
+|---|---|
+| [docs/round3_delivery.md](docs/round3_delivery.md) | Each Round 3 commitment, what was built, and the proof |
+| [docs/testing.md](docs/testing.md) | Automated tests, the control sweep, evaluations, reliability checks |
+| [docs/responsible_design.md](docs/responsible_design.md) | Privacy, security, accessibility and responsible AI |
+| [docs/limitations_and_roadmap.md](docs/limitations_and_roadmap.md) | Known limitations and the plan after the event |
+| [docs/clarity_thresholds.md](docs/clarity_thresholds.md) | Insights thresholds |
+| [docs/architecture.md](docs/architecture.md) · [docs/deploy.md](docs/deploy.md) · [docs/disclosures.md](docs/disclosures.md) | Design, deployment, APIs, models, data and AI-assisted development |
+| [docs/docs/user_testing.md](docs/docs/user_testing.md) | User testing |
