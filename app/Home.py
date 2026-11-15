@@ -103,6 +103,44 @@ try:
 except services.BackendNotConnected as e:
     wf_error = e
 
+# what needs this person right now, in one line, with the button that does it
+def _plural(n, one, many):
+    return f"{n} {one if n == 1 else many}"
+
+
+if not wf_error:
+    if role == "Creator":
+        back = [s for s in queue if s.get("status") == "rejected"]
+        waiting = [s for s in queue if s.get("status") == "pending"]
+        if back:
+            theme.attention("bad", f"<b>{_plural(len(back), 'draft was', 'drafts were')} sent back to you</b> with a "
+                            "comment from your manager. Fix it and send it again.", "pages/History.py", "Open my drafts →")
+        elif waiting:
+            theme.attention("warn", f"<b>{_plural(len(waiting), 'draft is', 'drafts are')} waiting for sign-off.</b> "
+                            "You will get a notification when the manager decides.", "pages/History.py", "See my drafts →")
+        else:
+            theme.attention("ok", "<b>Nothing is waiting on you.</b> Paste or import your next draft to check it.",
+                            PAGE_REVIEW, "Check a draft →")
+    elif role == "Admin":
+        expired = stats.get("expired_facts", 0) or 0
+        if expired:
+            theme.attention("bad", f"<b>{_plural(expired, 'fact has', 'facts have')} expired.</b> Drafts that repeat "
+                            "them are flagged until you renew them.", "pages/Fact_Register.py", "Renew facts →")
+        elif unclear:
+            theme.attention("warn", f"<b>{_plural(unclear, 'guideline looks', 'guidelines look')} unclear</b> to "
+                            "reviewers. Accept a clearer wording.", "pages/Insights.py", "Open insights →")
+        else:
+            theme.attention("ok", "<b>Every fact is current</b> and no guideline looks unclear.")
+    else:
+        if queue:
+            theme.attention("warn", f"<b>{_plural(len(queue), 'draft is', 'drafts are')} waiting for your decision.</b> "
+                            "Each one shows the creator's choices and the evidence behind every finding.",
+                            PAGE_APPROVALS, "Open the approval queue →")
+        else:
+            theme.attention("ok", "<b>Your approval queue is empty.</b> New drafts appear here and in the bell.",
+                            "pages/Insights.py", "See guideline insights →")
+    st.write("")
+
 # primary action per role: page links styled as buttons (first one filled)
 st.markdown("""<style>
 .st-key-home_actions [data-testid="stPageLink"] a { border:1px solid #CFD8E6 !important; border-radius:10px !important;

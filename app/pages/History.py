@@ -97,7 +97,10 @@ with st.container(key="hs_filters"):
     f1, f2, f3, f4 = st.columns([1.6, 1.1, 1.6, 1])
     status = f1.segmented_control("Status", ["All", "Approved", "Sent back", "Waiting"], default="All", key="hs_status")
     people = sorted({s["author"] for s in subs})
-    who = f2.selectbox("Written by", ["Everyone"] + [NAMES.get(p, p) for p in people], key="hs_who")
+    who_opts = ["Everyone"] + [NAMES.get(p, p) for p in people]
+    if ss.get("role") == "Creator" and "hs_who" not in ss and NAMES.get(ss.get("user", "")) in who_opts:
+        ss.hs_who = NAMES[ss["user"]]                     # a creator's "My drafts" opens on their own drafts
+    who = f2.selectbox("Written by", who_opts, key="hs_who")
     query = f3.text_input("Search", key="hs_q", placeholder="Title, person, comment or #id")
     sort = f4.selectbox("Sort by", ["Newest first", "Oldest first", "Most findings"], key="hs_sort")
 

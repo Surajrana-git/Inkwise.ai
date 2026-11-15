@@ -328,13 +328,14 @@ def test_review_page_belongs_to_the_creator_studio(who):
 def test_each_person_sees_only_their_own_tabs():
     import theme
     tabs = lambda r: [label for _p, label, _r in theme.visible_tabs(r)]  # noqa: E731
-    assert tabs("Creator") == ["Home", "Review", "History", "Brand Kit", "Help"]
-    assert tabs("Manager") == ["Home", "Approvals", "Insights", "History", "Brand Kit", "Help"]
-    assert tabs("Admin") == ["Home", "Fact Register", "Insights", "History", "Brand Kit", "Help"]
+    assert tabs("Creator") == ["Home", "Check a draft", "My drafts", "Brand Kit", "Help"]
+    assert tabs("Manager") == ["Home", "Approval queue", "Insights", "All drafts", "Brand Kit", "Help"]
+    assert tabs("Admin") == ["Home", "Fact Register", "Insights", "All drafts", "Brand Kit", "Help"]
     assert theme.can_open("pages/Fact_Register.py", "Creator")    # fact owners can still renew their team's facts
 
 
-@pytest.mark.parametrize("who,label", [("asha", "My drafts"), ("meera", "Waiting for you"), ("ravi", "Expired facts")])
+@pytest.mark.parametrize("who,label", [("asha", "sent back to you"), ("meera", "waiting for your decision"),
+                                       ("ravi", "facts have expired")])
 def test_home_is_different_for_each_person(who, label):
     person = {"asha": ASHA, "meera": MEERA, "ravi": RAVI}[who]
     at = run("app/Home.py", {**person, "landed_for": who})

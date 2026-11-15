@@ -713,8 +713,29 @@ def can_open(page: str, role: str) -> bool:
     return roles is None or role in roles
 
 
+# Tabs are named after the job each person does there (as in a real tool), not after the code page.
+TAB_LABELS = {
+    "Creator": {"pages/1_Review.py": "Check a draft", "pages/History.py": "My drafts"},
+    "Manager": {"pages/Approvals.py": "Approval queue", "pages/History.py": "All drafts"},
+    "Reviewer": {"pages/Approvals.py": "Approval queue", "pages/History.py": "All drafts"},
+    "Admin": {"pages/History.py": "All drafts"},
+}
+
+
 def visible_tabs(role: str) -> list:
-    return [t for t in NAV if t[2] is None or role in t[2]]
+    names = TAB_LABELS.get(role, {})
+    return [(p, names.get(p, label), r) for p, label, r in NAV if r is None or role in r]
+
+
+def attention(kind: str, text: str, page: str = "", label: str = "") -> None:
+    """One-line call to action at the top of a page: what needs this person now, and the button that does it."""
+    st.markdown(f'<div class="iw-attn {kind}"><span class="dot"></span><div>{text}</div></div>', unsafe_allow_html=True)
+    if page:
+        with st.container(key=f"attn_go_{kind}"):
+            try:
+                st.page_link(page, label=label)
+            except Exception:
+                pass
 
 
 def _workspace_guard() -> None:
@@ -799,6 +820,13 @@ SHELL_CSS = f"""
 .iw-strip b {{ color:#fff; font-weight:600; }}
 .iw-strip .sp {{ flex:1; }}
 .iw-strip .pill.ws {{ background:rgba(63,208,182,.18); color:#7FE6D2; border-color:rgba(63,208,182,.35); font-weight:700; }}
+.iw-attn {{ display:flex; gap:12px; align-items:center; border-radius:12px; padding:12px 16px; margin:4px 0 2px;
+  font-size:.9rem; color:{NAVY}; border:1px solid; }}
+.iw-attn .dot {{ width:9px; height:9px; border-radius:50%; flex:none; }}
+.iw-attn.bad {{ background:#FDF1F0; border-color:#F5C9C4; }} .iw-attn.bad .dot {{ background:#D93025; }}
+.iw-attn.warn {{ background:#FFF8EC; border-color:#F6DDB0; }} .iw-attn.warn .dot {{ background:#B45309; }}
+.iw-attn.ok {{ background:#EEF8F5; border-color:#C6E7DE; }} .iw-attn.ok .dot {{ background:#12917F; }}
+[class*="st-key-attn_go_"] [data-testid="stPageLink"] a p {{ color:#0B5E52 !important; font-weight:650 !important; }}
 .iw-guard {{ display:flex; gap:16px; align-items:flex-start; background:#fff; border:1px solid #E2E7F0; border-radius:16px;
   padding:22px 24px; margin:26px 0 14px; box-shadow:0 8px 24px rgba(20,24,33,.05); max-width:760px; }}
 .iw-guard .ic {{ width:44px; height:44px; border-radius:12px; background:#E8F6F2; color:#0B5E52; display:flex;
