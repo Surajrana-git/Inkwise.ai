@@ -1,3 +1,4 @@
+
 """Shared data contracts for INKWISE AI.
 
 Every module (knowledge, review, rules, workflow) and the Streamlit app
@@ -25,8 +26,8 @@ class Category(str, Enum):
 
 
 class CheckedBy(str, Enum):
-    RULE = "rule"   # deterministic check (glossary, expiry, readability)
-    AI = "ai"       # Gemini judgement grounded in retrieved sources
+    RULE = "rule"
+    AI = "ai"
 
 
 class FindingStatus(str, Enum):
@@ -39,20 +40,20 @@ class FindingStatus(str, Enum):
 # ---------- Brand kit (data/brand_kit/*.json) ----------
 
 class Guideline(BaseModel):
-    id: str = Field(pattern=r"^G\d{2}$")          # G01..G99
+    id: str = Field(pattern=r"^G\d{2}$")
     title: str
-    rule: str                                      # the guideline text itself
+    rule: str
     category: Category
     examples_good: list[str] = []
     examples_bad: list[str] = []
 
 
 class Fact(BaseModel):
-    id: str = Field(pattern=r"^F\d{2}$")          # F01..F99
-    statement: str                                 # approved wording of the fact
-    source: str                                    # where it comes from
-    owner: str                                     # who keeps it current
-    expires_on: Optional[date] = None              # None = does not expire
+    id: str = Field(pattern=r"^F\d{2}$")
+    statement: str
+    source: str
+    owner: str
+    expires_on: Optional[date] = None
 
     def is_expired(self, today: Optional[date] = None) -> bool:
         if self.expires_on is None:
@@ -61,33 +62,41 @@ class Fact(BaseModel):
 
 
 class Term(BaseModel):
-    id: str = Field(pattern=r"^T\d{2}$")          # T01..T99
-    approved: str                                  # e.g. "Lumora Pay"
-    banned_variants: list[str] = []                # e.g. ["LumoraPay", "Lumora pay"]
+    id: str = Field(pattern=r"^T\d{2}$")
+    approved: str
+    banned_variants: list[str] = []
     note: str = ""
 
 
 class SourceMatch(BaseModel):
     """One brand-kit item returned by knowledge.search()."""
-    source_id: str                                 # G04 / F12 / T07
-    source_type: str                               # "guideline" | "fact" | "term"
-    text: str                                      # text shown to the reviewer
-    score: float                                   # similarity, higher = closer
+    source_id: str
+    source_type: str
+    text: str
+    score: float
 
 
 # ---------- Review output ----------
 
 class Finding(BaseModel):
-    id: str                                        # "f-001"
+    id: str
     category: Category
-    span: str                                      # exact text flagged
-    source_id: str                                 # G04 | F12 | T07 | UNVERIFIED
-    source_text: str = ""                          # quoted guideline/fact ("" if UNVERIFIED)
-    why: str                                       # plain-language explanation
-    suggested_fix: str                             # rewrite that keeps the intent
+    span: str
+    source_id: str
+    source_text: str = ""
+    why: str
+    suggested_fix: str
     confidence: float = Field(ge=0.0, le=1.0)
     checked_by: CheckedBy
     status: FindingStatus = FindingStatus.OPEN
+
+    # ---------- Round 3: Finding fields ----------
+
+    evidence: str = ""
+    evidence_verified: bool = False
+    occurrences: list[tuple[int, int]] = Field(default_factory=list)
+    fact_owner: str = ""
+    freshness: str = ""
 
     @field_validator("source_id")
     @classmethod
@@ -96,7 +105,9 @@ class Finding(BaseModel):
             return v
         if len(v) == 3 and v[0] in "GFT" and v[1:].isdigit():
             return v
-        raise ValueError("source_id must look like G04, F12, T07 or be 'UNVERIFIED'")
+        raise ValueError(
+            "source_id must look like G04, F12, T07 or be 'UNVERIFIED'"
+        )
 
     @property
     def is_verified(self) -> bool:
@@ -104,9 +115,9 @@ class Finding(BaseModel):
 
 
 class ReviewResult(BaseModel):
-    content_id: Optional[int] = None               # set once saved by workflow
-    text: str                                      # text that was reviewed (after redaction)
+    content_id: Optional[int] = None
+    text: str
     findings: list[Finding] = []
-    redactions: int = 0                            # how many personal-data items were masked
-    model: str = ""                                # e.g. "gemini-…" for disclosure
-    ai_error: str = ""                             # set when the AI part did not run (UI shows a warning)
+    redactions: int = 0
+    model: str = ""
+    ai_error: str = ""
