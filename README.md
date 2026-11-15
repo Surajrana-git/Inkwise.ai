@@ -121,6 +121,15 @@ streamlit run app/Home.py
 pytest                                 # 194 tests
 ```
 
+## Team DECODIANS
+
+| Member | Role | What they built | Links |
+|---|---|---|---|
+| **Suraj Kumar** | Team lead · Backend | Review workflow and audit log, fact register, insights engine, reliability, deployment, app shell | [GitHub](https://github.com/Surajrana-git) · [LinkedIn](https://www.linkedin.com/in/suraj-kumar-340a56377) |
+| **Riyana S** | AI / ML | Gemini review engine, evidence verification, rule checks, privacy masking, first image checks, evaluation | [GitHub](https://github.com/Riyana01) · [LinkedIn](https://www.linkedin.com/in/riyana-s-630226329/) |
+| **Aashi Yadav** | Frontend | Review screen: inline highlights, evidence quotes, expiry badges, input warnings | [GitHub](https://github.com/aashiyadav893-web) · [LinkedIn](https://www.linkedin.com/in/aashi-yadav-107a713b9) |
+| **Pritha S** | Product / Research | Lumora brand kit, user testing, documentation | [GitHub](https://github.com/Pritha0605) · [LinkedIn](https://www.linkedin.com/in/pritha-sakthivel-4534b6327) |
+
 ## AI assistance
 
 We used AI tools while building Inkwise, and we say so openly:
