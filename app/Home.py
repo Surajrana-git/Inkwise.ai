@@ -45,6 +45,7 @@ def splash() -> None:
     st.rerun()
 
 
+theme.restore_session()          # a refresh keeps the demo person signed in (no splash again)
 if not st.session_state.get("splash_done") and not st.session_state.get("auth"):
     splash()
     st.stop()

@@ -69,8 +69,7 @@ def test_login_one_click_cards_and_password_fallback():
     at.text_input[1].set_value("demo123")
     at.button[labels(at).index("Continue")].click().run()
     assert at.session_state["user"] == "ravi"
-    at.session_state["auth"] = False
-    at.run()
+    at.button(key="sign_out").click().run()            # a real sign-out (also clears the ?as= address)
     # one click
     at.button(key="login_meera").click().run()
     assert at.session_state["auth"] is True and at.session_state["user"] == "meera"
@@ -480,3 +479,18 @@ def test_footer_meet_the_team_with_safe_links():
     assert theme._safe_url("javascript:alert(1)") == "" and theme._safe_url("") == ""
     at = run("app/pages/Help.py", ASHA)
     assert "BUILT BY" in " ".join(m.value for m in at.markdown)
+
+
+def test_refresh_keeps_the_demo_person_signed_in_and_sign_out_clears_it():
+    at = AppTest.from_file(str(ROOT / "app/pages/History.py"), default_timeout=90)
+    at.query_params["as"] = "meera"                     # what the address holds after a refresh
+    at.run()
+    assert not at.exception and at.session_state["auth"] and at.session_state["role"] == "Manager"
+    assert at.query_params["as"] == ["meera"] or at.query_params["as"] == "meera"
+    at.button(key="sign_out").click().run()
+    assert not at.session_state["auth"] if "auth" in at.session_state else True
+    assert "as" not in at.query_params
+    bad = AppTest.from_file(str(ROOT / "app/pages/History.py"), default_timeout=90)
+    bad.query_params["as"] = "nobody"                   # only demo accounts can be restored
+    bad.run()
+    assert not (bad.session_state["auth"] if "auth" in bad.session_state else False)

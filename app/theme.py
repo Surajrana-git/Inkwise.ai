@@ -531,7 +531,22 @@ LOGIN_CSS = f"""
 TEAM_BADGE = '<div class="iw-team">Team · <span>DECODIANS</span></div>'
 
 
+def restore_session() -> None:
+    """Keep a demo person signed in across a browser refresh.
+
+    Streamlit forgets everything on refresh, so the signed-in demo account is kept in the address
+    (?as=asha). Only the three demo accounts can be restored this way; they have no password anyway."""
+    ss = st.session_state
+    if ss.get("auth") or ss.get("signed_out"):
+        return
+    who = str(st.query_params.get("as", "")).strip().lower()
+    if who and who in ROLE_INFO and switch_user(who):
+        ss.landed_for = who            # a refresh keeps you on the page you were on
+        ss.splash_done = True
+
+
 def _sign_in(result: dict) -> None:
+    st.session_state.pop("signed_out", None)
     st.session_state.auth = True
     st.session_state.user = result.get("user", "")
     st.session_state.role = result.get("role", "Creator")
@@ -1151,6 +1166,12 @@ def _initials(name: str) -> str:
 def _sign_out() -> None:
     for key in ("auth", "user", "role", "team", "show_acct"):
         st.session_state.pop(key, None)
+    st.session_state["signed_out"] = True          # do not restore from the address after an explicit sign-out
+    try:
+        if "as" in st.query_params:
+            del st.query_params["as"]
+    except Exception:
+        pass
 
 
 def _ago(stamp: str) -> str:
@@ -1284,7 +1305,13 @@ def render_shell() -> None:
     st.session_state.setdefault("role", "Creator")
     st.session_state.setdefault("user", "Demo user")
 
+    restore_session()
     if REQUIRE_LOGIN and not st.session_state.get("auth"):
         login_screen()
+    if st.session_state.get("auth") and st.session_state.get("user") in ROLE_INFO:
+        try:
+            st.query_params["as"] = st.session_state["user"]     # survives a refresh; see restore_session()
+        except Exception:
+            pass
 
     header()
