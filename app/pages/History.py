@@ -164,7 +164,7 @@ with left:
                       width="stretch", on_click=ss.__setitem__, args=("hs_sel", s["id"]))
             if s["status"] == "pending" and theme.can_open("pages/Approvals.py", ss.get("role", "")):
                 try:
-                    b2.page_link("pages/Approvals.py", label="Go to Approvals", width="stretch")
+                    b2.page_link("pages/Approvals.py", label="Open in Approval queue", width="stretch")
                 except Exception:
                     pass
     if len(rows) > len(shown):

@@ -33,6 +33,23 @@ Each person has their own workspace with only the tabs they need: **Creator stud
 
 All data is synthetic: **Lumora** is a fictional fintech brand written by the team. The evaluation drafts were generated with **Adaption Labs** and labelled by hand.
 
+## Screenshots
+
+Taken from the running app with the demo data. Every screen below is one click away on the live link.
+
+| | |
+|---|---|
+| **Sign in:** pick a demo person, no password | **Creator studio:** Home says what needs you now |
+| ![Sign in](docs/screenshots/sign-in.jpg) | ![Creator home](docs/screenshots/home-creator.jpg) |
+| **Check a draft:** every finding highlighted, with its source, owner and expiry | **Image check:** the banner is checked with the copy; problems are boxed and numbered |
+| ![Check a draft](docs/screenshots/check-a-draft.jpg) | ![Image check](docs/screenshots/image-check.jpg) |
+| **Approval queue:** readiness checks and tracked changes before sign-off | **Approval desk:** the Manager's Home |
+| ![Approval queue](docs/screenshots/approval-queue.jpg) | ![Manager home](docs/screenshots/home-manager.jpg) |
+| **Fact Register:** owners, expiry dates, renew and re-check | **Guideline insights:** override and reject rates, review times |
+| ![Fact Register](docs/screenshots/fact-register.jpg) | ![Insights](docs/screenshots/insights.jpg) |
+| **All drafts:** audit trail and PDF audit report for every draft | **Admin console:** facts and guidelines first |
+| ![All drafts](docs/screenshots/all-drafts.jpg) | ![Admin home](docs/screenshots/home-admin.jpg) |
+
 ## What it does
 
 1. **Check:** paste copy, import a **PDF, Word or text file**, and optionally add the campaign **image**. Rules run first
