@@ -1,4 +1,5 @@
 import json
+import pytest
 from datetime import date
 
 from engine import review
@@ -103,3 +104,14 @@ def test_429_is_retried(monkeypatch):
     import google.genai as genai
     monkeypatch.setattr(genai, "Client", Client)
     assert review._gemini_generate("hi") == "[]" and calls["n"] == 3
+
+def test_default_backup_models_and_hung_call_gives_up(monkeypatch):
+    """Without GEMINI_FALLBACK_MODELS the free-tier backups are still tried, and a call that
+    never returns is abandoned instead of freezing the page."""
+    import time as _t
+    monkeypatch.delenv("GEMINI_FALLBACK_MODELS", raising=False)
+    assert len(review._fallback_models()) >= 2
+    t0 = _t.monotonic()
+    with pytest.raises(TimeoutError):
+        review._with_deadline(lambda: _t.sleep(30), 1)
+    assert _t.monotonic() - t0 < 5

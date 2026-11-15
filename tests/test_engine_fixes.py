@@ -75,6 +75,7 @@ def test_s5_claim_guidelines_always_sent(kb):
     def fake(prompt):
         seen["p"] = prompt
         return json.dumps([{"category": "claim", "span": "fastest", "source_id": "G07",
+                            "evidence": "Make factual claims only when supported",     # round 3: quote required
                             "why": "x", "suggested_fix": "fast", "confidence": 0.9}])
     r = review.review_text("We are the fastest app.", kb=kb, llm=fake)
     assert "G07:" in seen["p"]
