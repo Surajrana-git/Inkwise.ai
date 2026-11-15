@@ -728,14 +728,16 @@ def visible_tabs(role: str) -> list:
 
 
 def attention(kind: str, text: str, page: str = "", label: str = "") -> None:
-    """One-line call to action at the top of a page: what needs this person now, and the button that does it."""
-    st.markdown(f'<div class="iw-attn {kind}"><span class="dot"></span><div>{text}</div></div>', unsafe_allow_html=True)
-    if page:
-        with st.container(key=f"attn_go_{kind}"):
-            try:
-                st.page_link(page, label=label)
-            except Exception:
-                pass
+    """One-line call to action at the top of a page: what needs this person now, and the link that does it."""
+    with st.container(key=f"iw_attn_{kind}"):
+        c1, c2 = st.columns([5, 1.3], vertical_alignment="center")
+        c1.markdown(f'<div class="iw-attn"><span class="dot"></span><div>{text}</div></div>', unsafe_allow_html=True)
+        if page:
+            with c2:
+                try:
+                    st.page_link(page, label=label, width="stretch")
+                except Exception:
+                    pass
 
 
 def _workspace_guard() -> None:
@@ -820,13 +822,16 @@ SHELL_CSS = f"""
 .iw-strip b {{ color:#fff; font-weight:600; }}
 .iw-strip .sp {{ flex:1; }}
 .iw-strip .pill.ws {{ background:rgba(63,208,182,.18); color:#7FE6D2; border-color:rgba(63,208,182,.35); font-weight:700; }}
-.iw-attn {{ display:flex; gap:12px; align-items:center; border-radius:12px; padding:12px 16px; margin:4px 0 2px;
-  font-size:.9rem; color:{NAVY}; border:1px solid; }}
-.iw-attn .dot {{ width:9px; height:9px; border-radius:50%; flex:none; }}
-.iw-attn.bad {{ background:#FDF1F0; border-color:#F5C9C4; }} .iw-attn.bad .dot {{ background:#D93025; }}
-.iw-attn.warn {{ background:#FFF8EC; border-color:#F6DDB0; }} .iw-attn.warn .dot {{ background:#B45309; }}
-.iw-attn.ok {{ background:#EEF8F5; border-color:#C6E7DE; }} .iw-attn.ok .dot {{ background:#12917F; }}
-[class*="st-key-attn_go_"] [data-testid="stPageLink"] a p {{ color:#0B5E52 !important; font-weight:650 !important; }}
+[class*="st-key-iw_attn_"] {{ border-radius:12px; padding:8px 12px 8px 16px; border:1px solid; margin:2px 0 6px; }}
+.st-key-iw_attn_bad {{ background:#FDF1F0; border-color:#F5C9C4; }}
+.st-key-iw_attn_warn {{ background:#FFF8EC; border-color:#F6DDB0; }}
+.st-key-iw_attn_ok {{ background:#EEF8F5; border-color:#C6E7DE; }}
+.iw-attn {{ display:flex; gap:12px; align-items:center; font-size:.9rem; color:{NAVY}; }}
+.iw-attn .dot {{ width:9px; height:9px; border-radius:50%; flex:none; background:#12917F; }}
+.st-key-iw_attn_bad .iw-attn .dot {{ background:#D93025; }} .st-key-iw_attn_warn .iw-attn .dot {{ background:#B45309; }}
+[class*="st-key-iw_attn_"] [data-testid="stPageLink"] a {{ background:{NAVY} !important; border-radius:10px !important;
+  justify-content:center; padding:8px 12px !important; }}
+[class*="st-key-iw_attn_"] [data-testid="stPageLink"] a p {{ color:#fff !important; font-weight:650 !important; }}
 .iw-guard {{ display:flex; gap:16px; align-items:flex-start; background:#fff; border:1px solid #E2E7F0; border-radius:16px;
   padding:22px 24px; margin:26px 0 14px; box-shadow:0 8px 24px rgba(20,24,33,.05); max-width:760px; }}
 .iw-guard .ic {{ width:44px; height:44px; border-radius:12px; background:#E8F6F2; color:#0B5E52; display:flex;

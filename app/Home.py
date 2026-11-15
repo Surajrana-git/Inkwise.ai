@@ -141,36 +141,6 @@ if not wf_error:
                             "pages/Insights.py", "See guideline insights →")
     st.write("")
 
-# primary action per role: page links styled as buttons (first one filled)
-st.markdown("""<style>
-.st-key-home_actions [data-testid="stPageLink"] a { border:1px solid #CFD8E6 !important; border-radius:10px !important;
-  background:#fff !important; padding:9px 14px !important; justify-content:center; transition:all .15s ease; }
-.st-key-home_actions [data-testid="stPageLink"] a:hover { border-color:#12917F !important; box-shadow:0 6px 16px rgba(18,145,127,.12); }
-.st-key-home_actions [data-testid="stPageLink"] a p { font-weight:600 !important; color:#1B2A4E !important; font-size:.86rem !important; }
-.st-key-home_actions [data-testid="stColumn"]:first-child [data-testid="stPageLink"] a { background:#12917F !important;
-  border-color:#12917F !important; }
-.st-key-home_actions [data-testid="stColumn"]:first-child [data-testid="stPageLink"] a p { color:#fff !important; }
-</style>""", unsafe_allow_html=True)
-with st.container(key="home_actions"):
-    a1, a2, a3, _ = st.columns([1.3, 1.3, 1.3, 4])
-def _go(col, label, page, primary=False, key=None):
-    with col:
-        try:
-            st.page_link(page, label=label, width="stretch")
-        except Exception:
-            st.button(label, key=key or label, width="stretch", type="primary" if primary else "secondary")
-if role == "Creator":
-    _go(a1, "＋  New review", PAGE_REVIEW, True)
-    _go(a2, "My submissions", "pages/History.py")
-elif role == "Admin":
-    _go(a1, f"Renew expired facts ({stats.get('expired_facts', 0)})", "pages/Fact_Register.py", True)
-    _go(a2, "Guideline insights", "pages/Insights.py")
-    _go(a3, "Brand kit", "pages/Knowledge_Base.py")
-else:
-    _go(a1, f"Review approvals ({stats.get('pending_approvals', 0)})", PAGE_APPROVALS, True)
-    _go(a2, "Guideline insights", "pages/Insights.py")
-st.write("")
-
 d = "–"
 _n = lambda rows, **kv: sum(1 for s in rows if all(s.get(k) == v for k, v in kv.items()))  # noqa: E731
 mine = [s for s in submissions if s.get("author") == user]
