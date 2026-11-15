@@ -1316,10 +1316,11 @@ def notification_bell(user: str, role: str) -> None:
     toasted = ss.setdefault("notif_toasted", {}).setdefault(user, set())
     unread = [n for n in notifs if n["id"] not in seen]
     fresh = [n for n in unread if n["id"] not in toasted]
-    for n in fresh[:3]:
+    # at most two pop-ups, so they never cover the page: the newest one, then a pointer to the bell
+    for n in fresh[:1]:
         st.toast(f"**{n['title']}**  \n{n['detail']}", icon=n["icon"], duration=TOAST_SECONDS)
-    if len(fresh) > 3:
-        st.toast(f"{len(fresh) - 3} more in your notifications (🔔, top right)", icon="🔔", duration=TOAST_SECONDS)
+    if len(fresh) > 1:
+        st.toast(f"{len(fresh) - 1} more in your notifications (🔔, top right)", icon="🔔", duration=TOAST_SECONDS)
     toasted.update(n["id"] for n in fresh)
     st.markdown(f"<style>.st-key-iw_bell {{ --iw-unread:'{len(unread) if unread else ''}'; }}</style>",
                 unsafe_allow_html=True)

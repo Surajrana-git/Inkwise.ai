@@ -51,7 +51,7 @@ st.markdown("""<style>
 .hs-empty b { display:block; color:#1B2A4E; font-size:1.02rem; margin-bottom:4px; }
 </style>""", unsafe_allow_html=True)
 
-theme.page_header("Audit", "History",
+theme.page_header("Audit", "My drafts" if ss.get("role") == "Creator" else "All drafts",
                   "Every draft that was sent: who wrote it, what Inkwise found, who decided and when. "
                   "Download a PDF audit report for any draft, or the whole list as CSV.")
 

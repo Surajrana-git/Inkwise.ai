@@ -503,8 +503,8 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 st.write("")
-theme.page_header("Workspace", "All drafts",
-                  "Every draft in the workspace, who wrote it, what the check found, and who approved or returned it.")
+theme.page_header("Workspace", "Recent drafts",
+                  "Drafts in the workspace, who wrote them, what the check found, and who approved or returned them.")
 try:
     subs = services.list_submissions()
 except Exception:

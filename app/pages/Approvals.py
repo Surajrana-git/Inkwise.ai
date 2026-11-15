@@ -67,7 +67,7 @@ st.markdown("""<style>
 .ap-empty b { display:block; color:#1B2A4E; font-size:1.05rem; margin:8px 0 4px; }
 </style>""", unsafe_allow_html=True)
 
-theme.page_header("Govern", "Approvals",
+theme.page_header("Approval desk", "Approval queue",
                   "Read what the creator changed, check it is safe to publish, then approve it or send it back.")
 
 try:
