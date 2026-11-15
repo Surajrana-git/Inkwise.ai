@@ -548,6 +548,69 @@ def demo_accounts() -> list[dict]:
 
 # ---------------------------------------------------------------- fact register (Improvement 2)
 
+def notifications(user: str, role: str, names: dict | None = None) -> list[dict]:
+    """What needs this person's attention, newest first: [{id, icon, title, detail, at, page}].
+
+    Manager / Reviewer: drafts sent for approval by someone else.
+    Creator:            their drafts that were approved or sent back (last 14 days), and still waiting.
+    Admin:              expired and expiring-soon facts, and guidelines that look unclear.
+    Built from the workspace data on every page load, so a draft sent in another session shows up
+    for the manager on their next click."""
+    names = names or {}
+    nm = lambda u: names.get(u, u)
+    role = (role or "").lower()
+    out: list[dict] = []
+    try:
+        subs = list_submissions()
+    except Exception:
+        subs = []
+    if role in ("manager", "reviewer"):
+        for s in subs:
+            if s["status"] == "pending" and s["author"] != user:
+                n = len(s["findings"])
+                out.append({"id": f"sub-{s['id']}-sent", "icon": "📨", "page": "pages/Approvals.py", "at": s["updated_at"],
+                            "title": f"{nm(s['author'])} sent “{s['title']}” for your approval",
+                            "detail": f"{n} finding{'s' if n != 1 else ''}, all decided by the creator"})
+    if role == "creator":
+        cutoff = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=14)).strftime("%Y-%m-%d %H:%M")
+        for s in subs:
+            if s["author"] != user:
+                continue
+            if s["status"] in ("approved", "rejected") and (s.get("decided_at") or "") >= cutoff:
+                ok = s["status"] == "approved"
+                out.append({"id": f"sub-{s['id']}-{s['status']}", "icon": "✅" if ok else "↩️",
+                            "page": "pages/History.py", "at": s["decided_at"],
+                            "title": f"{nm(s['decided_by'])} {'approved' if ok else 'sent back'} “{s['title']}”",
+                            "detail": (f"Comment: {s['comment']}" if s.get("comment") else
+                                       "Ready to publish" if ok else "Open it to see what to change")})
+            elif s["status"] == "pending":
+                out.append({"id": f"sub-{s['id']}-waiting", "icon": "⏳", "page": "pages/History.py",
+                            "at": s["updated_at"], "title": f"“{s['title']}” is waiting for a manager",
+                            "detail": "You will be notified when it is approved or sent back"})
+    if role == "admin":
+        try:
+            for f in fact_register():
+                if f["status"] in ("expired", "expiring_soon"):
+                    gone = f["status"] == "expired"
+                    out.append({"id": f"fact-{f['id']}-{f['status']}", "icon": "⚠️" if gone else "⏰",
+                                "page": "pages/Fact_Register.py", "at": f.get("expires_on") or "",
+                                "title": (f"{f['id']} expired on {f['expires_on']}" if gone else
+                                          f"{f['id']} expires in {f['days_left']} days"),
+                                "detail": f"Owner: {f['owner']} · {f['statement'][:70]}"})
+        except Exception:
+            pass
+        try:
+            for g in guideline_stats():
+                if g.get("unclear") and not g.get("accepted_rewording"):
+                    out.append({"id": f"guide-{g['source_id']}-unclear", "icon": "💡", "page": "pages/Insights.py",
+                                "at": "", "title": f"{g['source_id']} looks unclear to reviewers",
+                                "detail": g.get("reason", "Consider a clearer wording")})
+        except Exception:
+            pass
+    out.sort(key=lambda n: n["at"] or "", reverse=True)
+    return out
+
+
 def fact_register(owner: str | None = None, status: str | None = None) -> list[dict]:
     return [_plain(f) for f in _wf().fact_register(owner=owner or None, status=status or None)]
 

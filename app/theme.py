@@ -698,10 +698,14 @@ SHELL_CSS = f"""
   background:linear-gradient(90deg, transparent, rgba(63,208,182,.55), transparent); }}
 .st-key-iw_header .iw-wordmark span {{ color:#fff !important; }}
 .st-key-iw_header .iw-wordmark em {{ color:#3FD0B6 !important; }}
-.st-key-iw_header .iw-tab-active {{ color:#fff !important; border-bottom-color:#3FD0B6 !important; }}
-.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a p {{ color:rgba(255,255,255,.72) !important; }}
-.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a:hover {{ background:rgba(255,255,255,.06) !important; }}
+.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a p, .st-key-iw_header .iw-tab-fallback {{ color:rgba(255,255,255,.68) !important; }}
+.st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a:hover {{ background-color:rgba(255,255,255,.07) !important; }}
 .st-key-iw_header .st-key-iw_tabs [data-testid="stPageLink"] a:hover p {{ color:#fff !important; }}
+.st-key-iw_header [class*="st-key-iw_tab_on_"] [data-testid="stPageLink"] a,
+.st-key-iw_header [class*="st-key-iw_tab_on_"] .iw-tab-fallback {{ background-color:rgba(63,208,182,.15) !important;
+  border-color:rgba(63,208,182,.45) !important; box-shadow:0 0 0 3px rgba(63,208,182,.06); }}
+.st-key-iw_header [class*="st-key-iw_tab_on_"] [data-testid="stPageLink"] a p,
+.st-key-iw_header [class*="st-key-iw_tab_on_"] .iw-tab-fallback {{ color:#fff !important; }}
 .st-key-iw_header .iw-status {{ border:1px solid rgba(255,255,255,.14); }}
 .st-key-iw_header .iw-status.ok {{ background:rgba(63,208,182,.14); color:#7FE6D2; }}
 .st-key-iw_header .iw-status.ok i {{ background:#3FD0B6; box-shadow:0 0 0 3px rgba(63,208,182,.25); }}
@@ -786,12 +790,15 @@ SHELL_CSS = f"""
 .iw-status.bad {{ background:#FDECEC; color:#B42318; cursor:help; }} .iw-status.bad i {{ background:#D93025; }}
 .st-key-iw_tabs [data-testid="stHorizontalBlock"] {{ gap:0 !important; flex-wrap:nowrap; }}
 .st-key-iw_tabs [data-testid="stColumn"] {{ min-width:0 !important; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a {{ border-radius:0 !important; padding:10px 4px 12px !important;
-  border-bottom:2px solid transparent; background:transparent !important; justify-content:center; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a p {{ font-size:.82rem; color:{MUTED} !important; font-weight:600; white-space:nowrap; }}
-.st-key-iw_tabs [data-testid="stPageLink"] a:hover p {{ color:{NAVY} !important; }}
-.iw-tab-active {{ display:block; text-align:center; padding:10px 4px 12px; border-bottom:2px solid {TEAL};
-  font-size:.82rem; font-weight:700; color:{NAVY}; white-space:nowrap; }}
+/* tabs: every tab is the same element with the same box, so switching pages never moves anything */
+.st-key-iw_tabs [data-testid="stPageLink"] {{ margin:0 3px; }}
+.st-key-iw_tabs [data-testid="stPageLink"] a {{ border-radius:999px !important; padding:7px 8px !important; min-height:36px;
+  border:1px solid transparent !important; background:transparent !important; justify-content:center;
+  transition:background-color .15s ease, border-color .15s ease; }}
+.st-key-iw_tabs [data-testid="stPageLink"] a p {{ font-size:.84rem !important; font-weight:600 !important; white-space:nowrap;
+  letter-spacing:.01em; }}
+.iw-tab-fallback {{ display:block; text-align:center; padding:7px 12px; min-height:36px; border-radius:999px;
+  font-size:.84rem; font-weight:600; white-space:nowrap; border:1px solid transparent; }}
 .st-key-iw_user [data-testid="stPopover"] button {{ background:transparent !important; border:none !important;
   padding:4px 6px 4px 50px !important; min-height:46px; position:relative; justify-content:flex-start; }}
 .st-key-iw_user [data-testid="stPopover"] button p {{ text-align:left; line-height:1.25; font-size:.78rem; white-space:nowrap;
@@ -813,6 +820,23 @@ SHELL_CSS = f"""
 [data-testid="stPopoverBody"] .stButton button {{ position:relative; padding-right:70px !important; }}
 [data-testid="stPopoverBody"] .stButton button:disabled p em {{ color:#3C5BD8 !important; font-style:normal;
   position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:.78rem; }}
+.st-key-iw_bell [data-testid="stPopover"] > div > button, .st-key-iw_bell [data-testid="stPopover"] button {{
+  background:rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:999px !important;
+  min-height:38px; width:42px; padding:0 !important; position:relative; justify-content:center; }}
+.st-key-iw_bell [data-testid="stPopover"] button:hover {{ background:rgba(255,255,255,.12) !important; }}
+.st-key-iw_bell [data-testid="stPopover"] button p {{ font-size:1rem; }}
+.st-key-iw_bell [data-testid="stPopover"] button svg {{ display:none; }}
+.st-key-iw_bell [data-testid="stPopover"] button::after {{ content:var(--iw-unread); position:absolute; top:-5px; right:-6px;
+  min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#FF6B60; color:#fff; font-size:.66rem;
+  font-weight:700; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #13284A; }}
+.st-key-iw_bell [data-testid="stPopover"] button[aria-expanded]::after {{ }}
+[data-testid="stPopoverBody"]:has(.st-key-nt_read), [data-testid="stPopoverBody"]:has([class*="st-key-nt_"]) {{ min-width:390px; max-width:420px; }}
+[data-testid="stPopoverBody"] [class*="st-key-nt_new_"] button {{ background:#F0F8F6 !important; }}
+[data-testid="stPopoverBody"] [class*="st-key-nt_new_"] button::before {{ content:""; position:absolute; left:6px; top:50%;
+  transform:translateY(-50%); width:7px; height:7px; border-radius:50%; background:#12917F; }}
+.iw-nt-empty {{ font-size:.86rem; color:{MUTED}; padding:10px 12px 14px; }}
+.st-key-nt_read button {{ min-height:38px !important; border-top:1px solid {LINE} !important; border-radius:0 !important; }}
+.st-key-nt_read button p {{ color:#12917F !important; font-weight:600 !important; font-size:.84rem !important; }}
 .st-key-iw_signout button {{ min-height:40px !important; border-top:1px solid {LINE} !important; border-radius:0 !important; }}
 .st-key-iw_signout button p {{ color:{NAVY} !important; font-size:.88rem !important; }}
 .rv-live .rm {{ color:#B42318; background:#FDECEC; text-decoration:line-through; text-decoration-thickness:1.5px;
@@ -1049,6 +1073,63 @@ def _sign_out() -> None:
         st.session_state.pop(key, None)
 
 
+def _ago(stamp: str) -> str:
+    from datetime import datetime, timezone
+    try:
+        t = datetime.strptime((stamp or "")[:16].replace("T", " "), "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    except ValueError:
+        try:
+            t = datetime.strptime((stamp or "")[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            return ""
+    m = int((datetime.now(timezone.utc) - t).total_seconds() // 60)
+    if m < 0:
+        return "soon"
+    return (f"{max(m, 1)} min ago" if m < 60 else f"{m // 60} h ago" if m < 1440 else
+            "yesterday" if m < 2880 else f"{m // 1440} days ago")
+
+
+def _mark_read(user: str, ids: list) -> None:
+    st.session_state.setdefault("notif_seen", {}).setdefault(user, set()).update(ids)
+
+
+def notification_bell(user: str, role: str) -> None:
+    """Bell with the unread count; pop-ups for anything new when a person signs in or switches."""
+    ss = st.session_state
+    try:
+        notifs = services.notifications(user, role, {u: full_name(u) for u in FULL_NAMES})
+    except Exception:
+        notifs = []
+    seen = ss.setdefault("notif_seen", {}).setdefault(user, set())
+    toasted = ss.setdefault("notif_toasted", {}).setdefault(user, set())
+    unread = [n for n in notifs if n["id"] not in seen]
+    fresh = [n for n in unread if n["id"] not in toasted]
+    for n in fresh[:3]:
+        st.toast(f"**{n['title']}**  \n{n['detail']}", icon=n["icon"])
+    if len(fresh) > 3:
+        st.toast(f"{len(fresh) - 3} more in your notifications (🔔, top right)", icon="🔔")
+    toasted.update(n["id"] for n in fresh)
+    st.markdown(f"<style>.st-key-iw_bell {{ --iw-unread:'{len(unread) if unread else ''}'; }}</style>",
+                unsafe_allow_html=True)
+    with st.popover("🔔", help="Notifications"):
+        st.markdown(f'<div class="iw-menu-h">NOTIFICATIONS · {len(unread)} NEW</div>', unsafe_allow_html=True)
+        if not notifs:
+            st.markdown('<div class="iw-nt-empty">You are all caught up.</div>', unsafe_allow_html=True)
+        for i, n in enumerate(notifs[:12]):
+            new = n["id"] not in seen
+            when = _ago(n["at"])
+            if st.button(f"**{n['icon']}  {n['title']}** {n['detail']}" + (f" · {when}" if when else ""),
+                         key=f"nt_{'new' if new else 'old'}_{i}", width="stretch"):
+                _mark_read(user, [n["id"]])
+                try:
+                    st.switch_page(n["page"])
+                except Exception:
+                    st.rerun()
+        if unread:
+            st.button("Mark all as read", key="nt_read", width="stretch",
+                      on_click=_mark_read, args=(user, [n["id"] for n in notifs]))
+
+
 def header() -> None:
     """Top bar on every signed-in page: wordmark, page tabs, AI status, user menu (switch demo user / sign out)."""
     ss = st.session_state
@@ -1072,21 +1153,20 @@ def header() -> None:
             '<i class="pill mint">CodeTitans India 2026</i><span>Round 3 · The Finish</span>'
             '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
             '<span class="sp"></span><span>Built by <b>Team DECODIANS</b></span></div>', unsafe_allow_html=True)
-        c_logo, c_tabs, c_status, c_user = st.columns([1.9, 6.3, 1.05, 2.0], vertical_alignment="center", gap="small")
+        c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.9, 6.0, 1.05, 0.55, 2.0], vertical_alignment="center",
+                                                              gap="small")
         with c_logo:
             st.markdown(wordmark(True, 44), unsafe_allow_html=True)
         with c_tabs, st.container(key="iw_tabs"):
             tabs = [t for t in NAV if t[2] is None or role in t[2]]
-            for col, (page, label, _r) in zip(st.columns(len(tabs)), tabs):
-                with col:
-                    if page == current:
-                        st.markdown(f'<span class="iw-tab-active">{html.escape(label)}</span>', unsafe_allow_html=True)
-                    else:
-                        try:
-                            st.page_link(page, label=label)
-                        except Exception:   # e.g. headless test runner without multipage context
-                            st.markdown(f'<span class="iw-tab-active" style="border-color:transparent;font-weight:600;'
-                                        f'color:{MUTED}">{html.escape(label)}</span>', unsafe_allow_html=True)
+            widths = [len(label) + 5 for _p, label, _r in tabs]       # longer labels get wider pills, nothing truncates
+            for i, (col, (page, label, _r)) in enumerate(zip(st.columns(widths), tabs)):
+                on = "on" if page == current else "off"
+                with col, st.container(key=f"iw_tab_{on}_{i}"):
+                    try:
+                        st.page_link(page, label=label, width="stretch")
+                    except Exception:   # headless test runner without multipage context
+                        st.markdown(f'<span class="iw-tab-fallback">{html.escape(label)}</span>', unsafe_allow_html=True)
         with c_status:
             if ai["ok"] is None:
                 st.markdown('<span class="iw-status" style="background:#F3F5F9;color:#5A6480">'
@@ -1097,6 +1177,8 @@ def header() -> None:
             else:
                 st.markdown(f'<span class="iw-status bad" title="{html.escape(ai["reason"])}. Rule checks still run.">'
                             '<i></i>AI not connected</span>', unsafe_allow_html=True)
+        with c_bell, st.container(key="iw_bell"):
+            notification_bell(user, role)
         with c_user, st.container(key="iw_user"):
             with st.popover(f"**{full_name(user)}** {role} · {ORG}"):
                 st.markdown('<div class="iw-menu-h">SWITCH DEMO USER</div>', unsafe_allow_html=True)
