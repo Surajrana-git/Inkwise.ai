@@ -73,3 +73,4 @@ with tab_t:
         df = pd.DataFrame(glossary).rename(
             columns={"id": "ID", "avoid": "Avoid", "use": "Use instead", "note": "Note"})
         st.dataframe(df, use_container_width=True, hide_index=True)
+theme.footer()

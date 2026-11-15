@@ -161,3 +161,4 @@ with st.expander("All guidelines in range"):
                        file_name="inkwise_insights.csv", mime="text/csv")
 
 theme.ai_banner()
+theme.footer()
