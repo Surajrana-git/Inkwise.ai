@@ -10,8 +10,7 @@ import theme
 st.set_page_config(page_title="inkwise.ai", page_icon="✒️", layout="wide")
 theme.render_shell()
 
-st.title("History")
-st.caption("Earlier reviews and who decided what.")
+theme.page_header("Audit", "History", "Every review, decision and comment, with who did what and when. Export it as CSV.")
 
 try:
     all_subs = services.list_submissions()

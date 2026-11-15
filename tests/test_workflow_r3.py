@@ -191,3 +191,18 @@ def test_startup_seeds_and_applies_overrides(tmp_path, monkeypatch):
     state = bootstrap.startup()
     assert state.seeded_items >= 10 and not state.using_sample_kit
     assert bootstrap.startup().seeded_items == 0
+
+
+def test_demo_sign_in_only_for_demo_accounts():
+    assert wf.demo_sign_in("Ravi") == {"user": "ravi", "role": "Admin", "team": ""}
+    assert wf.demo_sign_in("someone") is None
+    assert wf.demo_sign_in("") is None
+
+
+def test_renew_impact_lists_open_drafts_citing_the_fact():
+    text = "Lumora Pay has 2 million registered users."
+    cid = wf.submit_content("asha", "Post", text)
+    wf.save_review(cid, ReviewResult(text=text, findings=[finding("f-1", "F01", Category.OUTDATED_FACT, span=text)]))
+    imp = wf.renew_impact("F01")
+    assert [d["id"] for d in imp["drafts"]] == [cid] and imp["findings"] == 1
+    assert wf.renew_impact("F02") == {"fact_id": "F02", "drafts": [], "findings": 0}
