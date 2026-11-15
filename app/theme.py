@@ -738,25 +738,22 @@ SHELL_CSS = f"""
 .st-key-iw_footer [data-testid="stPageLink"] a p {{ font-size:.8rem !important; color:rgba(255,255,255,.72) !important; font-weight:400 !important; }}
 .st-key-iw_footer [data-testid="stPageLink"] a:hover p {{ color:#fff !important; }}
 .st-key-iw_footer [data-testid="stPageLink"] {{ margin-bottom:-6px; }}
-.iw-team-h {{ display:flex; align-items:baseline; gap:12px; margin:26px 0 12px; padding-top:22px;
-  border-top:1px solid rgba(255,255,255,.08); }}
-.iw-team-h span {{ font-size:.66rem; letter-spacing:.16em; font-weight:700; color:#7FE6D2; }}
-.iw-team-h b {{ font-size:1rem; color:#fff; font-weight:650; }}
-.iw-team-grid {{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; }}
-.iw-tm {{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:14px 14px 12px;
-  display:flex; flex-direction:column; transition:border-color .15s ease, background-color .15s ease; }}
-.iw-tm:hover {{ border-color:rgba(63,208,182,.45); background:rgba(255,255,255,.06); }}
-.iw-tm-top {{ display:flex; gap:10px; align-items:center; }}
-.iw-tm-top i {{ font-style:normal; width:38px; height:38px; border-radius:50%; flex:none; display:flex; align-items:center;
-  justify-content:center; background:#3FD0B6; color:#0D1A31; font-weight:700; font-size:.78rem; }}
-.iw-tm-top b {{ display:block; color:#fff; font-size:.92rem; font-weight:650; }}
-.iw-tm-top small {{ display:block; color:#7FE6D2; font-size:.72rem; }}
-.iw-tm p {{ font-size:.76rem; line-height:1.5; color:rgba(255,255,255,.66); margin:10px 0 10px; flex:1; }}
-.iw-tm-l {{ display:flex; gap:8px; flex-wrap:wrap; }}
-.iw-tm-l a {{ font-size:.72rem; font-weight:600; color:#fff !important; text-decoration:none !important; padding:4px 10px;
-  border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05); }}
-.iw-tm-l a:hover {{ border-color:#3FD0B6; background:rgba(63,208,182,.14); }}
-@media (max-width: 900px) {{ .iw-team-grid {{ grid-template-columns:repeat(2, minmax(0, 1fr)); }} }}
+.iw-team-row {{ margin:24px 0 0; padding-top:18px; border-top:1px solid rgba(255,255,255,.08); text-align:center; }}
+.iw-team-h {{ font-size:.62rem; letter-spacing:.18em; font-weight:700; color:rgba(255,255,255,.45); margin-bottom:10px; }}
+.iw-team-h b {{ color:#7FE6D2; font-weight:700; }}
+.iw-team-grid {{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; }}
+.iw-tm {{ display:inline-flex; align-items:center; gap:9px; padding:6px 8px 6px 6px; border-radius:999px; cursor:default;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); transition:border-color .15s ease, background-color .15s ease; }}
+.iw-tm:hover {{ border-color:rgba(63,208,182,.4); background:rgba(255,255,255,.07); }}
+.iw-tm > i {{ font-style:normal; width:28px; height:28px; border-radius:50%; flex:none; display:flex; align-items:center;
+  justify-content:center; background:linear-gradient(135deg, #3FD0B6, #12917F); color:#0D1A31; font-weight:700; font-size:.66rem; }}
+.iw-tm b {{ display:block; color:#fff; font-size:.78rem; font-weight:600; line-height:1.15; text-align:left; }}
+.iw-tm small {{ display:block; color:rgba(255,255,255,.5); font-size:.66rem; line-height:1.2; text-align:left; }}
+.iw-tm-l {{ display:inline-flex; gap:4px; margin-left:4px; }}
+.iw-tm-l a {{ width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+  color:rgba(255,255,255,.7) !important; background:rgba(255,255,255,.06); text-decoration:none !important;
+  transition:background-color .15s ease, color .15s ease; }}
+.iw-tm-l a:hover {{ background:#3FD0B6; color:#0D1A31 !important; }}
 .iw-ft-legal {{ display:flex; flex-wrap:wrap; justify-content:center; text-align:center; gap:6px 18px; font-size:.7rem; color:rgba(255,255,255,.5);
   border-top:1px solid rgba(255,255,255,.08); margin-top:22px; padding:14px 0 18px; }}
 .iw-ft-legal b {{ color:rgba(255,255,255,.8); font-weight:600; }}
@@ -961,23 +958,37 @@ def _safe_url(u: str) -> str:
     return html.escape(u, quote=True) if u.startswith(("https://", "http://")) else ""
 
 
+_ICON_IN = ('<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M4.98 3.5a2.5 '
+            '2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 '
+            '6.1V21h-4v-5.4c0-1.29-.02-2.95-1.8-2.95-1.8 0-2.08 1.4-2.08 2.86V21H9z"/></svg>')
+_ICON_GH = ('<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M12 .5a11.5 11.5 0 '
+            '0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 '
+            '1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 '
+            '1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 '
+            '2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 '
+            '11.5 0 0 0 12 .5z"/></svg>')
+
+
 def team_html() -> str:
-    """'Meet the team' cards: name, role, what they built, LinkedIn / GitHub (shown only when filled in)."""
+    """Slim, centred 'Built by DECODIANS' row: avatar, name, role and small LinkedIn / GitHub icons.
+    What each person built is in the tooltip, so the footer stays light."""
     t = _team()
-    cards = []
+    pills = []
     for m in t.get("members", []):
         links = "".join(
-            f'<a href="{url}" target="_blank" rel="noopener noreferrer">{label} ↗</a>'
-            for label, url in (("LinkedIn", _safe_url(m.get("linkedin"))), ("GitHub", _safe_url(m.get("github")))) if url)
-        cards.append(
-            f'<div class="iw-tm"><div class="iw-tm-top"><i>{html.escape(_initials(m.get("name", "")))}</i>'
-            f'<div><b>{html.escape(m.get("name", ""))}</b><small>{html.escape(m.get("role", ""))}</small></div></div>'
-            f'<p>{html.escape(m.get("built", ""))}</p>'
-            + (f'<div class="iw-tm-l">{links}</div>' if links else "") + "</div>")
-    if not cards:
+            f'<a href="{url}" target="_blank" rel="noopener noreferrer" title="{label} · {html.escape(m.get("name", ""))}"'
+            f' aria-label="{label}">{icon}</a>'
+            for label, url, icon in (("LinkedIn", _safe_url(m.get("linkedin")), _ICON_IN),
+                                     ("GitHub", _safe_url(m.get("github")), _ICON_GH)) if url)
+        pills.append(
+            f'<div class="iw-tm" title="{html.escape(m.get("built", ""), quote=True)}">'
+            f'<i>{html.escape(_initials(m.get("name", "")))}</i>'
+            f'<div><b>{html.escape(m.get("name", ""))}</b><small>{html.escape(m.get("role", ""))}</small></div>'
+            + (f'<span class="iw-tm-l">{links}</span>' if links else "") + "</div>")
+    if not pills:
         return ""
-    return (f'<div class="iw-team-h"><span>MEET THE TEAM</span><b>{html.escape(t.get("team", ""))}</b></div>'
-            f'<div class="iw-team-grid">{"".join(cards)}</div>')
+    return (f'<div class="iw-team-row"><div class="iw-team-h">BUILT BY <b>{html.escape(t.get("team", ""))}</b></div>'
+            f'<div class="iw-team-grid">{"".join(pills)}</div></div>')
 
 
 def footer() -> None:
