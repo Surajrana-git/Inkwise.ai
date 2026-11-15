@@ -464,3 +464,14 @@ def test_bell_badge_toasts_once_and_mark_read():
     assert "NOTIFICATIONS · 2 NEW" in md or "NEW" in md
     at.button(key="nt_read").click().run()
     assert "NOTIFICATIONS · 0 NEW" in " ".join(m.value for m in at.markdown)
+
+
+def test_footer_meet_the_team_with_safe_links():
+    import theme
+    out = theme.team_html()
+    for name in ("Suraj Kumar", "Riyana S", "Aashi Yadav", "Pritha S"):
+        assert name in out
+    assert 'href="https://github.com/Surajrana-git" target="_blank" rel="noopener noreferrer"' in out
+    assert theme._safe_url("javascript:alert(1)") == "" and theme._safe_url("") == ""
+    at = run("app/pages/Help.py", ASHA)
+    assert "MEET THE TEAM" in " ".join(m.value for m in at.markdown)
