@@ -23,6 +23,7 @@ class Category(str, Enum):
     OUTDATED_FACT = "outdated_fact"
     MESSAGING = "messaging"
     ACCESSIBILITY = "accessibility"
+    VISUAL = "visual"          # image checks: brand colours (contrast problems are accessibility)
 
 
 class CheckedBy(str, Enum):
@@ -97,16 +98,18 @@ class Finding(BaseModel):
     occurrences: list[tuple[int, int]] = Field(default_factory=list)
     fact_owner: str = ""
     freshness: str = ""
+    where: str = "text"                            # "text" (the copy) | "image" (the campaign creative)
+    box: Optional[list[float]] = None              # image findings: [x0, y0, x1, y1], fractions of width/height
 
     @field_validator("source_id")
     @classmethod
     def _source_format(cls, v: str) -> str:
         if v == UNVERIFIED:
             return v
-        if len(v) == 3 and v[0] in "GFT" and v[1:].isdigit():
+        if len(v) == 3 and v[0] in "GFTV" and v[1:].isdigit():
             return v
         raise ValueError(
-            "source_id must look like G04, F12, T07 or be 'UNVERIFIED'"
+            "source_id must look like G04, F12, T07, V01 or be 'UNVERIFIED'"
         )
 
     @property

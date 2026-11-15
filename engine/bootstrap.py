@@ -57,7 +57,11 @@ def startup(seed: bool = True) -> AppState:
     if sample:
         log.warning("data/brand_kit is incomplete; using the small sample kit in tests/fixtures")
         kit = SAMPLE_KIT
-    kb = knowledge.build_index(kit)  # also becomes knowledge.get_kb()
+    # Keyword (BM25) search by default: instant, offline, and what the published eval used. Gemini embeddings
+    # at startup could stall the whole app on a slow network or an exhausted free-tier quota.
+    import os
+    semantic = os.getenv("INKWISE_SEMANTIC", "0") == "1"
+    kb = knowledge.build_index(kit, use_embeddings=semantic)  # also becomes knowledge.get_kb()
 
     # Renewals and accepted rewordings made earlier live in the DB; the JSON kit stays untouched.
     try:

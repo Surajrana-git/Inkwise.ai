@@ -122,8 +122,8 @@ def _retryable(e: Exception) -> bool:
     )
 
 
-def _gemini_generate(prompt: str) -> str:
-    """Call Gemini with retries and configured fallback models."""
+def _gemini_generate(prompt, contents=None) -> str:
+    """Call Gemini with retries and fallback models. `contents` (e.g. [image part, prompt]) overrides prompt."""
     global _last_model
 
     from google import genai
@@ -150,7 +150,7 @@ def _gemini_generate(prompt: str) -> str:
                 response = _with_deadline(
                     lambda: client.models.generate_content(
                         model=model,
-                        contents=prompt,
+                        contents=contents if contents is not None else prompt,
                         config=types.GenerateContentConfig(
                             response_mime_type="application/json",
                             temperature=0.2,
