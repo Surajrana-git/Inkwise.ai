@@ -71,11 +71,12 @@ def test_login_screen_shows_demo_accounts_and_rejects_bad_password():
 
 def test_creator_journey_review_decide_send_then_manager_sees_it():
     at = run("app/pages/1_Review.py", ASHA)
-    at.button[0].click().run()                                     # empty input
+    run_btn = lambda: at.button[labels(at).index("Run review")]
+    run_btn().click().run()                                        # empty input
     assert any("Paste some text" in w.value for w in at.warning)
     text = "Open LumoraPay today. Lumora Pay has 2 million registered users. All transfers are always free."
     at.text_area(key="rv_text").input(text).run()
-    at.button[0].click().run()
+    run_btn().click().run()
     findings = at.session_state["rv_findings"]
     assert findings and {f["source_id"] for f in findings} >= {"T01", "F01"}
     assert all(f["start"] is not None for f in findings)         # highlighted in the text

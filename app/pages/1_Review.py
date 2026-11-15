@@ -7,7 +7,10 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 import streamlit as st
 import services
 import theme
-import voice_input
+try:  # optional: dictation needs app/voice_input.py; the page must work without it
+    import voice_input
+except ImportError:
+    voice_input = None
 import review_helpers as rh
 
 InputError = getattr(services, "InputError", ())
@@ -144,7 +147,8 @@ left, right = st.columns([1, 1.3], gap="large")
 with left:
     st.text_input("Title", key="rv_title", placeholder="e.g. Spring launch email")
     st.text_area("Your content", key="rv_text", height=280, placeholder="Paste your text here...")
-    st.audio_input("Dictate", key="rv_voice", on_change=transcribe_voice, help="Tap the mic, speak, then stop. The text is added above and you can edit it.")
+    if voice_input is not None:
+        st.audio_input("Dictate", key="rv_voice", on_change=transcribe_voice, help="Tap the mic, speak, then stop. The text is added above and you can edit it.")
     st.file_uploader("Image from gallery", type=["png", "jpg", "jpeg"], key="rv_image", help="Upload a poster, screenshot or product photo, then tap Review image.")
     st.button("Review image", key="rv_image_btn", on_click=review_image_cb, width="stretch", disabled=not review_ready)
     if ss.rv_voice_error:
