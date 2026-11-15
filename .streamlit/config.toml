@@ -7,5 +7,10 @@ textColor = "#1B2A4E"
 
 [client]
 toolbarMode = "minimal"
+# our own header has the page tabs; never flash Streamlit's default page list
+showSidebarNavigation = false
+
 [server]
 maxUploadSize = 5
+# images in app/static are served as files, so the page styles stay small and load at once
+enableStaticServing = true
