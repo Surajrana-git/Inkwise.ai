@@ -1225,16 +1225,16 @@ def journey() -> None:
 </style>""", unsafe_allow_html=True)
         with st.container(key="iw_journey_closed"):
             c1, c2 = st.columns([5, 1.3])
-            c1.markdown('<div class="iw-jc"><i>▶</i><span><b>New here?</b> Follow the 3-minute end-to-end story: five '
-                        'steps, each as the right person.</span></div>', unsafe_allow_html=True)
-            c2.button("Show the story", key="j_show", width="stretch",
+            c1.markdown('<div class="iw-jc"><i>▶</i><span><b>First time here?</b> Walk one draft from first check '
+                        'to sign-off in five short steps.</span></div>', unsafe_allow_html=True)
+            c2.button("Show the walkthrough", key="j_show", width="stretch",
                       on_click=ss.__setitem__, args=("journey_hidden", False))
         return
     st.markdown(JOURNEY_CSS, unsafe_allow_html=True)
     with st.container(key="iw_journey"):
         h1, h2 = st.columns([8, 1])
-        h1.markdown('<div class="jh"><b>Try the end-to-end story</b><small>about 3 minutes</small></div>'
-                    '<div class="js">Each step switches to the right person for you. You can also explore freely; '
+        h1.markdown('<div class="jh"><b>One draft, start to finish</b><small>five short steps</small></div>'
+                    '<div class="js">Every button signs you in as the person who does that step and opens their page; '
                     'each person only sees the pages of their own workspace.</div>', unsafe_allow_html=True)
         h2.button("Hide", key="j_hide", on_click=ss.__setitem__, args=("journey_hidden", True))
         for col, (n, who, title, text, page, sample) in zip(st.columns(len(JOURNEY)), JOURNEY):

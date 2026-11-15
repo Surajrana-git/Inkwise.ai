@@ -172,7 +172,7 @@ def test_header_user_menu_switches_user_and_signs_out():
 
 def test_landing_shows_journey_and_all_drafts_with_trail():
     at = run("app/pages/1_Review.py", {**ASHA, "landed_for": "asha"})
-    assert "Go as Meera" not in labels(at) and "Show the story" in labels(at)     # hidden by default
+    assert "Go as Meera" not in labels(at) and "Show the walkthrough" in labels(at)     # hidden by default
     at.button(key="j_show").click().run()
     assert {"Go as Asha", "Go as Meera", "Go as Ravi"} <= set(labels(at))
     assert any("APPROVED / RETURNED BY" in m.value for m in at.markdown)
