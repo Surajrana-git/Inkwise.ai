@@ -140,10 +140,8 @@ with left, st.container(key="ap_queue"):
         dot = "🟢" if r["ready"] else "🟠"
         lbl = (f"**{s['title']}** {dot} {r['label']} · {theme.full_name(s['author'])} · "
                f"{_age(s['submitted_at'])} · {len(s['findings'])} findings")
-        if st.button(lbl, key=f"q_{s['id']}", type="primary" if s["id"] == ss.get("ap_sel") else "secondary",
-                     width="stretch"):
-            ss.ap_sel = s["id"]
-            st.rerun()
+        st.button(lbl, key=f"q_{s['id']}", type="primary" if s["id"] == ss.get("ap_sel") else "secondary",
+                  width="stretch", on_click=ss.__setitem__, args=("ap_sel", s["id"]))
 
 with right, st.container(key="ap_detail"):
     s = next((x for x in pending if x["id"] == ss.get("ap_sel")), None)
@@ -250,3 +248,4 @@ with st.container(key="ap_recent"):
                 f'<th>COMMENT</th></tr>{"".join(rows)}</table>', unsafe_allow_html=True)
 
 theme.ai_banner()
+theme.footer()

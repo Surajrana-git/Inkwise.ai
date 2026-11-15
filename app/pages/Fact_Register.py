@@ -15,6 +15,10 @@ theme.render_shell()
 ss = st.session_state
 
 theme.page_header("Fact freshness", "Fact Register", "Approved facts with an owner and an expiry date. Expired facts are flagged in every review until their owner re-verifies them.")
+if st.session_state.get("fr_done"):                 # confirmation survives the refresh after a renewal
+    msg = st.session_state.pop("fr_done")
+    st.success("✓ " + msg)
+    st.toast("✓ Fact renewed")
 
 LABEL = {"expired": ("Expired", "bad"), "expiring_soon": ("Expiring soon", "open"), "valid": ("Valid", "ok")}
 
@@ -122,9 +126,10 @@ with st.container(border=True):
             st.error(str(e))
         else:
             n = len(out.get("rechecked", []))
-            st.success(f"{fact['id']} now expires on {out['expires_on']}. "
-                       f"{n} open draft{'s' if n != 1 else ''} re-checked, {out.get('cleared', 0)} finding(s) cleared. "
-                       "Logged in the audit trail.")
+            ss_ = st.session_state
+            ss_["fr_done"] = (f"{fact['id']} now expires on {out['expires_on']}. "
+                              f"{n} open draft{'s' if n != 1 else ''} re-checked, {out.get('cleared', 0)} finding(s) "
+                              "cleared. Logged in the audit trail.")
             st.rerun()
 
 st.markdown('<div class="iw-section">Renewal history</div>', unsafe_allow_html=True)
@@ -142,3 +147,4 @@ else:
                     + (f" · “{html.escape(a['title'])}”" if a.get("title") else ""))
 
 theme.ai_banner()
+theme.footer()

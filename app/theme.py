@@ -538,6 +538,12 @@ def _sign_in(result: dict) -> None:
     st.session_state.team = result.get("team", "")
 
 
+def _login_click(username: str) -> None:
+    """Sign-in row callback: one run per click; a failure is shown on the next run."""
+    if not switch_user(username):
+        st.session_state["login_failed"] = True
+
+
 def switch_user(username: str) -> bool:
     """Sign in as a demo account (used by the login rows and the guided tour)."""
     try:
@@ -606,16 +612,15 @@ def login_screen() -> None:
             for a in accounts:
                 u = a["username"]
                 _i, title, desc, _bg, _fg = ROLE_INFO.get(u, ("", a["role"], a["can"], "", ""))
-                if st.button(f"**{title}** {full_name(u)} · {desc}", key=f"login_{u}", width="stretch"):
-                    if switch_user(u):
-                        st.rerun()
-                    st.error("Sign in failed. Try again in a moment.")
+                st.button(f"**{title}** {full_name(u)} · {desc}", key=f"login_{u}", width="stretch",
+                          on_click=_login_click, args=(u,))
+            if st.session_state.pop("login_failed", False):
+                st.error("Sign in failed. Try again in a moment.")
         st.markdown('<div class="iw-or"><span>or</span></div>', unsafe_allow_html=True)
         with st.container(key="iw_acct"):
             if not st.session_state.get("show_acct"):
-                if st.button("Sign in with your work account", key="acct_open", width="stretch"):
-                    st.session_state.show_acct = True
-                    st.rerun()
+                st.button("Sign in with your work account", key="acct_open", width="stretch",
+                          on_click=st.session_state.__setitem__, args=("show_acct", True))
             else:
                 with st.form("login_form", border=False):
                     email = st.text_input("Work email", placeholder="you@company.com")
@@ -644,9 +649,8 @@ def login_screen() -> None:
                                 '<span>Work email and single sign-on will be available when Inkwise goes live. '
                                 'For now, pick a demo role above to explore everything.</span></div>',
                                 unsafe_allow_html=True)
-                if st.button("Back to demo roles", key="acct_close"):
-                    st.session_state.show_acct = False
-                    st.rerun()
+                st.button("Back to demo roles", key="acct_close",
+                          on_click=st.session_state.__setitem__, args=("show_acct", False))
         st.markdown('<div class="iw-login-foot">Demo workspace · Lumora is a fictional brand · no real data</div>',
                     unsafe_allow_html=True)
     st.stop()
@@ -667,6 +671,7 @@ NAV = [  # (page file, tab label, roles that see it; None = everyone)
     ("pages/Insights.py", "Insights", ("Manager", "Admin")),
     ("pages/History.py", "History", None),
     ("pages/Knowledge_Base.py", "Brand Kit", None),
+    ("pages/Help.py", "Help", None),
 ]
 
 SHELL_CSS = f"""
@@ -677,7 +682,9 @@ SHELL_CSS = f"""
 .block-container {{ padding:0 2.6rem 4rem !important; max-width:100% !important; }}
 /* hidden <style> blocks before the header still take a flex gap each: take them out of the flow */
 [data-testid="stVerticalBlock"] > div:has(~ div > .st-key-iw_header) {{ position:absolute !important; }}
-[data-testid="stAppViewContainer"]::before {{ content:""; position:absolute; top:0; left:0; right:0; height:60px;
+/* pin the header: its own wrapper is exactly its height, so make the wrapper the sticky element */
+[data-testid="stVerticalBlock"] > div:has(> .st-key-iw_header) {{ position:sticky !important; top:0; z-index:999; }}
+[data-testid="stAppViewContainer"]::before {{ content:""; position:absolute; top:0; left:0; right:0; height:93px;
   z-index:0; pointer-events:none; background:linear-gradient(90deg, #0D1A31 0%, #13284A 55%, #0F2A3F 100%); }}
 [data-testid="stElementContainer"]:has(> iframe[height="0"]), .stIFrame:has(iframe[height="0"]) {{ position:absolute !important; }}
 [data-stale="true"] {{ opacity:1 !important; transition:none !important; }}
@@ -686,7 +693,7 @@ SHELL_CSS = f"""
 [data-testid="stImage"] img {{ border-radius:10px; }}
 .st-key-iw_header {{ position:sticky; top:0; z-index:999; padding:8px 0 6px; margin-bottom:22px;
   background:linear-gradient(90deg, #0D1A31 0%, #13284A 55%, #0F2A3F 100%);
-  box-shadow:0 0 0 100vmax #0F213C, 0 10px 30px -12px rgba(13,26,49,.45); clip-path:inset(0 -100vmax -40px -100vmax); }}
+  box-shadow:0 0 0 100vmax #0F213C; clip-path:inset(0 -100vmax 0 -100vmax); }}
 .st-key-iw_header::after {{ content:""; position:absolute; left:-100vmax; right:-100vmax; bottom:0; height:1px;
   background:linear-gradient(90deg, transparent, rgba(63,208,182,.55), transparent); }}
 .st-key-iw_header .iw-wordmark span {{ color:#fff !important; }}
@@ -707,6 +714,29 @@ SHELL_CSS = f"""
 .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button:hover {{ background:rgba(255,255,255,.06) !important; }}
 .st-key-iw_header .st-key-iw_user [data-testid="stPopover"] button svg {{ color:rgba(255,255,255,.7) !important; fill:currentColor; }}
 .st-key-iw_header [data-testid="stHorizontalBlock"] {{ align-items:center; }}
+.iw-strip {{ display:flex; align-items:center; gap:12px; font-size:.68rem; color:rgba(255,255,255,.62);
+  padding:2px 0 7px; margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,.08); white-space:nowrap; overflow:hidden; }}
+.iw-strip b {{ color:#fff; font-weight:600; }}
+.iw-strip .sp {{ flex:1; }}
+.iw-strip .pill {{ font-style:normal; font-weight:600; padding:2px 9px; border-radius:999px;
+  background:rgba(255,255,255,.08); color:rgba(255,255,255,.82); }}
+.iw-strip .pill.mint {{ background:rgba(63,208,182,.16); color:#7FE6D2; }}
+.st-key-iw_footer {{ margin-top:56px; padding:34px 0 0; position:relative; color:rgba(255,255,255,.72);
+  background:linear-gradient(90deg, #0D1A31 0%, #13284A 60%, #0F2A3F 100%);
+  box-shadow:0 0 0 100vmax #0F213C; clip-path:inset(0 -100vmax -100vmax -100vmax); }}
+.st-key-iw_footer::before {{ content:""; position:absolute; left:-100vmax; right:-100vmax; top:0; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(63,208,182,.55), transparent); }}
+.iw-ft-blurb {{ font-size:.8rem; line-height:1.55; margin:10px 0 12px; max-width:360px; }}
+.iw-ft-tags {{ font-size:.7rem; color:#7FE6D2; letter-spacing:.02em; }}
+.iw-ft-h {{ font-size:.66rem; letter-spacing:.16em; font-weight:700; color:#fff; margin:4px 0 10px; }}
+.iw-ft-li {{ font-size:.8rem; margin:0 0 7px; color:rgba(255,255,255,.72); }}
+.st-key-iw_footer [data-testid="stPageLink"] a {{ padding:0 !important; min-height:0 !important; background:transparent !important; }}
+.st-key-iw_footer [data-testid="stPageLink"] a p {{ font-size:.8rem !important; color:rgba(255,255,255,.72) !important; font-weight:400 !important; }}
+.st-key-iw_footer [data-testid="stPageLink"] a:hover p {{ color:#fff !important; }}
+.st-key-iw_footer [data-testid="stPageLink"] {{ margin-bottom:-6px; }}
+.iw-ft-legal {{ display:flex; flex-wrap:wrap; gap:6px 18px; font-size:.7rem; color:rgba(255,255,255,.5);
+  border-top:1px solid rgba(255,255,255,.08); margin-top:22px; padding:14px 0 18px; }}
+.iw-ft-legal b {{ color:rgba(255,255,255,.8); font-weight:600; }}
 .iw-ph {{ margin:6px 0 20px; }}
 .iw-ph .eyebrow {{ font-size:.68rem; letter-spacing:.18em; font-weight:700; color:{TEAL}; margin-bottom:6px; }}
 .iw-ph h1 {{ font-family:'Instrument Serif', Georgia, serif !important; font-weight:400 !important; font-size:2.5rem !important;
@@ -867,6 +897,51 @@ LIVE_LEGEND = ('<div class="rv-legend">'
                '<span><i style="border-bottom:2px wavy #D93025"></i>still open</span></div>')
 
 
+FOOTER_PRODUCT = [("pages/1_Review.py", "Pre-publication check"), ("pages/Approvals.py", "Approvals and sign-off"),
+                  ("pages/Fact_Register.py", "Fact Register"), ("pages/History.py", "History and audit reports"),
+                  ("pages/Knowledge_Base.py", "Brand kit")]
+FOOTER_TRUST = ["Every finding cites its source", "Facts with owners and expiry dates", "A person approves every change",
+                "Personal data masked before AI", "Full audit trail"]
+
+
+def footer() -> None:
+    """Navy footer at the bottom of every signed-in page."""
+    def link(page, label):
+        try:
+            st.page_link(page, label=label)
+        except Exception:                       # headless tests: no multipage context
+            st.markdown(f'<div class="iw-ft-li">{html.escape(label)}</div>', unsafe_allow_html=True)
+
+    with st.container(key="iw_footer"):
+        c1, c2, c3, c4 = st.columns([1.6, 1, 1.1, 1], gap="large")
+        with c1:
+            st.markdown(wordmark(True, 34)
+                        + '<div class="iw-ft-blurb">Checks campaign copy and creatives against your guidelines, '
+                          'approved facts and glossary, shows the source behind every finding, and keeps a person '
+                          'in charge of every change.</div>'
+                          '<div class="iw-ft-tags">Built for CodeTitans India 2026 · Round 3 · Team DECODIANS</div>',
+                        unsafe_allow_html=True)
+        with c2:
+            st.markdown('<div class="iw-ft-h">PRODUCT</div>', unsafe_allow_html=True)
+            for page, label in FOOTER_PRODUCT:
+                link(page, label)
+        with c3:
+            st.markdown('<div class="iw-ft-h">TRUST AND GOVERNANCE</div>'
+                        + "".join(f'<div class="iw-ft-li">{html.escape(x)}</div>' for x in FOOTER_TRUST),
+                        unsafe_allow_html=True)
+        with c4:
+            st.markdown('<div class="iw-ft-h">RESOURCES</div>', unsafe_allow_html=True)
+            link("pages/Help.py", "Help Centre")
+            link("pages/Help.py", "Methodology and AI disclosure")
+            link("pages/Insights.py" if st.session_state.get("role") in ("Manager", "Admin") else "pages/Help.py",
+                 "Guideline insights" if st.session_state.get("role") in ("Manager", "Admin") else "Known limitations")
+        st.markdown('<div class="iw-ft-legal"><span>© 2026 <b>Inkwise.ai</b></span>'
+                    '<span>Lumora is a fictional brand; all data is synthetic</span>'
+                    '<span>AI findings are suggestions, never automatic edits</span>'
+                    '<span>Gemini is used for AI checks; personal data is masked first</span></div>',
+                    unsafe_allow_html=True)
+
+
 def page_header(eyebrow: str, title: str, subtitle: str = "") -> None:
     """Same header on every page: small category label, serif title, one-line purpose."""
     st.markdown(f'<div class="iw-ph"><div class="eyebrow">{html.escape(eyebrow.upper())}</div><h1>{html.escape(title)}</h1>'
@@ -923,9 +998,8 @@ def journey() -> None:
     """End-to-end story for judges: five steps, each switches to the right person and opens the right page."""
     ss = st.session_state
     if ss.get("journey_hidden"):
-        if st.button("Show the 3-minute end-to-end story", key="j_show"):
-            ss.journey_hidden = False
-            st.rerun()
+        st.button("Show the 3-minute end-to-end story", key="j_show",
+                  on_click=ss.__setitem__, args=("journey_hidden", False))
         return
     st.markdown(JOURNEY_CSS, unsafe_allow_html=True)
     with st.container(key="iw_journey"):
@@ -933,9 +1007,7 @@ def journey() -> None:
         h1.markdown('<div class="jh"><b>Try the end-to-end story</b><small>about 3 minutes</small></div>'
                     '<div class="js">Each step switches to the right person for you. You can also explore freely; '
                     'every page works for every role it is shown to.</div>', unsafe_allow_html=True)
-        if h2.button("Hide", key="j_hide"):
-            ss.journey_hidden = True
-            st.rerun()
+        h2.button("Hide", key="j_hide", on_click=ss.__setitem__, args=("journey_hidden", True))
         for col, (n, who, title, text, page, sample) in zip(st.columns(len(JOURNEY)), JOURNEY):
             with col:
                 st.markdown(f'<div class="iw-jcard"><span class="n">{n}</span><b>{html.escape(title)}</b>'
@@ -993,6 +1065,11 @@ def header() -> None:
     st.markdown(shell, unsafe_allow_html=True)
     persist_css({"iw-global": _style_text(CSS), "iw-shell": _style_text(shell), "iw-boot": None})
     with st.container(key="iw_header"):
+        st.markdown(
+            '<div class="iw-strip"><span>Content governance before you publish</span>'
+            '<i class="pill mint">CodeTitans India 2026</i><span>Round 3 · The Finish</span>'
+            '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
+            '<span class="sp"></span><span>Built by <b>Team DECODIANS</b></span></div>', unsafe_allow_html=True)
         c_logo, c_tabs, c_status, c_user = st.columns([1.45, 6.6, 1.05, 2.1], vertical_alignment="center", gap="small")
         with c_logo:
             st.markdown(wordmark(True, 30), unsafe_allow_html=True)

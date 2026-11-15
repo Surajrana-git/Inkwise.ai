@@ -20,7 +20,8 @@ ASHA = {**SPLASH, "auth": True, "user": "asha", "role": "Creator", "team": "Comm
 MEERA = {**SPLASH, "auth": True, "user": "meera", "role": "Manager", "team": "Product marketing"}
 RAVI = {**SPLASH, "auth": True, "user": "ravi", "role": "Admin", "team": ""}
 PAGES = ["app/Home.py", "app/pages/1_Review.py", "app/pages/Approvals.py", "app/pages/History.py",
-         "app/pages/Knowledge_Base.py", "app/pages/Fact_Register.py", "app/pages/Insights.py"]
+         "app/pages/Knowledge_Base.py", "app/pages/Fact_Register.py", "app/pages/Insights.py",
+         "app/pages/Help.py"]
 
 
 @pytest.fixture(autouse=True)
@@ -342,3 +343,61 @@ def test_remove_image_empties_the_uploader():
     at.button(key="rv_img_sample").click().run()
     at.button(key="rv_img_rm").click().run()
     assert not at.session_state["rv_img_bytes"] and at.session_state["rv_up_n"] == 1
+
+
+def _all_md(at) -> str:
+    return " ".join(m.value for m in at.markdown)
+
+
+@pytest.mark.parametrize("page", ["app/Home.py", "app/pages/1_Review.py", "app/pages/Approvals.py",
+                                  "app/pages/History.py", "app/pages/Help.py", "app/pages/Knowledge_Base.py"])
+def test_every_page_has_the_strip_and_the_footer(page):
+    at = run(page, {**MEERA, "landed_for": "meera"})
+    md = _all_md(at)
+    assert "CodeTitans India 2026" in md and "iw-ft-legal" in md and "TRUST AND GOVERNANCE" in md
+
+
+def test_help_centre_search_topics_and_faq():
+    at = run("app/pages/Help.py", ASHA)
+    md = _all_md(at)
+    assert "Help Centre" in md and "Start here" in md and "How Inkwise works" in md
+    assert len(at.expander) >= 10                                    # FAQ answers
+    at.button(key="hc_t_facts").click().run()                         # pick a guide
+    assert at.session_state["hc_topic"] == "facts" and "Fact freshness" in _all_md(at)
+    at.text_input(key="hc_q").input("unverified").run()               # search narrows the FAQ
+    assert [e.label for e in at.expander] == ["What does UNVERIFIED mean?"]
+    at.text_input(key="hc_q").input("zzzz nothing").run()
+    assert "No answer matches" in _all_md(at) and "No guide matches" in _all_md(at)
+
+
+def test_history_cards_filters_details_and_pdf():
+    import services
+    at = run("app/pages/History.py", MEERA)
+    md = _all_md(at)
+    subs = services.list_submissions()
+    assert "Drafts sent for approval" in md and f"of {len(subs)} shown" in md
+    assert any(d.label.startswith("⬇  Download audit report (PDF)") for d in at.get("download_button"))
+    at.segmented_control(key="hs_status").set_value("Sent back").run()
+    shown = [s for s in subs if s["status"] == "rejected"]
+    assert f"{len(shown)} of {len(subs)} shown" in _all_md(at)
+    pick = shown[-1]["id"]
+    at.button(key=f"hs_open_{pick}").click().run()
+    assert at.session_state["hs_sel"] == pick and f"Audit report · #{pick}" in _all_md(at)
+    at.text_input(key="hs_q").input("no draft has this title").run()
+    assert "No drafts match" in _all_md(at)
+
+
+def test_audit_report_pdf_has_text_findings_and_timeline():
+    import services, report_pdf, pymupdf
+    s = next(x for x in services.list_submissions() if x["status"] == "approved")
+    pdf = report_pdf.build(s, services.draft_history(s["id"]), {"meera": "Meera Kapoor"})
+    text = pymupdf.open(stream=pdf, filetype="pdf")[0].get_text()
+    assert pdf[:4] == b"%PDF" and s["title"] in text and "Findings and decisions" in text
+    assert "Timeline" in text and "Meera Kapoor" in text and "Inkwise check" in text
+
+
+def test_fact_renewal_confirmation_survives_the_refresh():
+    at = run("app/pages/Fact_Register.py", RAVI)
+    at.button[labels(at).index("Renew and re-check open drafts")].click().run()
+    assert not at.exception
+    assert any("now expires on" in s.value for s in at.success)       # was wiped by st.rerun() before

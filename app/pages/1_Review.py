@@ -496,3 +496,4 @@ if shown:
             st.markdown(f'- **{f["status"].title()}** · `{f["source_id"]}` · “{f["span"]}” → {f["suggested_fix"]}')
 
 theme.ai_banner()
+theme.footer()
