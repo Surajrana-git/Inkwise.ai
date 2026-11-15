@@ -7,7 +7,7 @@ cites the exact source it relies on, or is marked **UNVERIFIED**. A person decid
 before anything counts as approved.
 
 **Live demo:** https://inkwiseai-jobnp9jkgfoutv5jeuvvs7.streamlit.app/
-Team **DECODIANS** · CodeTitans India 2026 (title sponsor Inkloom) · Round 3: The Finish
+**DECODIANS** · CodeTitans India 2026 (title sponsor Inkloom) · Round 3: The Finish
 
 | Member | Role | Built |
 |---|---|---|

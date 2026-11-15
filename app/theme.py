@@ -757,7 +757,7 @@ SHELL_CSS = f"""
   border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05); }}
 .iw-tm-l a:hover {{ border-color:#3FD0B6; background:rgba(63,208,182,.14); }}
 @media (max-width: 900px) {{ .iw-team-grid {{ grid-template-columns:repeat(2, minmax(0, 1fr)); }} }}
-.iw-ft-legal {{ display:flex; flex-wrap:wrap; gap:6px 18px; font-size:.7rem; color:rgba(255,255,255,.5);
+.iw-ft-legal {{ display:flex; flex-wrap:wrap; justify-content:center; text-align:center; gap:6px 18px; font-size:.7rem; color:rgba(255,255,255,.5);
   border-top:1px solid rgba(255,255,255,.08); margin-top:22px; padding:14px 0 18px; }}
 .iw-ft-legal b {{ color:rgba(255,255,255,.8); font-weight:600; }}
 .iw-ph {{ margin:6px 0 20px; }}
@@ -976,7 +976,7 @@ def team_html() -> str:
             + (f'<div class="iw-tm-l">{links}</div>' if links else "") + "</div>")
     if not cards:
         return ""
-    return (f'<div class="iw-team-h"><span>MEET THE TEAM</span><b>Team {html.escape(t.get("team", ""))}</b></div>'
+    return (f'<div class="iw-team-h"><span>MEET THE TEAM</span><b>{html.escape(t.get("team", ""))}</b></div>'
             f'<div class="iw-team-grid">{"".join(cards)}</div>')
 
 
@@ -995,7 +995,7 @@ def footer() -> None:
                         + '<div class="iw-ft-blurb">Checks campaign copy and creatives against your guidelines, '
                           'approved facts and glossary, shows the source behind every finding, and keeps a person '
                           'in charge of every change.</div>'
-                          '<div class="iw-ft-tags">Built for CodeTitans India 2026 · Round 3 · Team DECODIANS</div>',
+                          '<div class="iw-ft-tags">Built for CodeTitans India 2026 · Round 3 · DECODIANS</div>',
                         unsafe_allow_html=True)
         with c2:
             st.markdown('<div class="iw-ft-h">PRODUCT</div>', unsafe_allow_html=True)
@@ -1203,7 +1203,7 @@ def header() -> None:
             '<div class="iw-strip"><span>Content governance before you publish</span>'
             '<i class="pill mint">CodeTitans India 2026</i><span>Round 3 · The Finish</span>'
             '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
-            '<span class="sp"></span><span>Built by <b>Team DECODIANS</b></span></div>', unsafe_allow_html=True)
+            '<span class="sp"></span><span>Built by <b>DECODIANS</b></span></div>', unsafe_allow_html=True)
         c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.9, 6.0, 1.05, 0.55, 2.0], vertical_alignment="center",
                                                               gap="small")
         with c_logo:

@@ -283,7 +283,7 @@ if match(q, "methodology how it works rules ai gemini evidence limitations priva
 st.write("")
 h1, h2 = st.columns(2, gap="medium")
 with h1, st.container(key="hc_help1"):
-    st.markdown('<div class="hc-cta"><b>💬 Still need help?</b><small>Tell Team DECODIANS what went wrong or what is '
+    st.markdown('<div class="hc-cta"><b>💬 Still need help?</b><small>Tell DECODIANS what went wrong or what is '
                 'unclear; we read every report.</small></div>', unsafe_allow_html=True)
     st.link_button("Report an issue on GitHub", "https://github.com/Surajrana-git/Inkwise.ai/issues", width="stretch")
 with h2, st.container(key="hc_help2"):
