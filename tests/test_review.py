@@ -29,7 +29,7 @@ def test_rules_and_ai_merge_with_sequential_ids_and_citations():
     llm = fake_llm([
         {"category": "claim", "span": "the fastest payments app in India", "source_id": "G99",
          "why": "No approved fact supports this.", "suggested_fix": "a fast way to pay", "confidence": 0.95},
-        {"category": "tone", "span": "revolutionary", "source_id": "G01",
+        {"category": "tone", "span": "revolutionary", "source_id": "G01", "evidence": "Avoid jargon and hype",
          "why": "Hype word.", "suggested_fix": "new", "confidence": 0.8},
         {"category": "tone", "span": "words not in the text", "source_id": "G01", "why": "x",
          "suggested_fix": "y", "confidence": 0.9}])
@@ -77,7 +77,8 @@ def test_no_api_key_means_rules_only(monkeypatch):
 def test_bad_json_and_markdown_fences_are_handled():
     r = review.review_text("Try LumoraPay now.", kb=KB, llm=lambda p: "not json")
     assert len(r.findings) == 1
-    fenced = "```json\n" + json.dumps([{"category": "tone", "span": "No hype", "source_id": "G01", "why": "w",
+    fenced = "```json\n" + json.dumps([{"category": "tone", "span": "No hype", "source_id": "G01",
+                                         "evidence": "Avoid jargon and hype", "why": "w",
                                          "suggested_fix": "f", "confidence": 2}]) + "\n```"
     r = review.review_text("Try LumoraPay now. No hype.", kb=KB, llm=lambda p: fenced)
     assert any(f.span == "No hype" and f.source_id == "G01" and f.confidence == 1.0 for f in r.findings)
