@@ -688,6 +688,8 @@ SHELL_CSS = f"""
   z-index:0; pointer-events:none; background:linear-gradient(90deg, #0D1A31 0%, #13284A 55%, #0F2A3F 100%); }}
 [data-testid="stElementContainer"]:has(> iframe[height="0"]), .stIFrame:has(iframe[height="0"]) {{ position:absolute !important; }}
 [data-stale="true"] {{ opacity:1 !important; transition:none !important; }}
+/* pop-ups appear just below the header bar, so they never cover the person's name or the bell */
+[data-testid="stToastContainer"] {{ top:104px !important; }}
 /* Streamlit 1.50: an image outside st.columns shrinks to 1rem; make it fill its card */
 [data-testid="stElementContainer"]:has([data-testid="stImage"]) {{ width:100% !important; }}
 [data-testid="stImage"] img {{ border-radius:10px; }}
@@ -1155,6 +1157,9 @@ def _mark_read(user: str, ids: list) -> None:
     st.session_state.setdefault("notif_seen", {}).setdefault(user, set()).update(ids)
 
 
+TOAST_SECONDS = 3            # pop-ups stay a little shorter than Streamlit's 4 s default
+
+
 def notification_bell(user: str, role: str) -> None:
     """Bell with the unread count; pop-ups for anything new when a person signs in or switches."""
     ss = st.session_state
@@ -1167,9 +1172,9 @@ def notification_bell(user: str, role: str) -> None:
     unread = [n for n in notifs if n["id"] not in seen]
     fresh = [n for n in unread if n["id"] not in toasted]
     for n in fresh[:3]:
-        st.toast(f"**{n['title']}**  \n{n['detail']}", icon=n["icon"])
+        st.toast(f"**{n['title']}**  \n{n['detail']}", icon=n["icon"], duration=TOAST_SECONDS)
     if len(fresh) > 3:
-        st.toast(f"{len(fresh) - 3} more in your notifications (🔔, top right)", icon="🔔")
+        st.toast(f"{len(fresh) - 3} more in your notifications (🔔, top right)", icon="🔔", duration=TOAST_SECONDS)
     toasted.update(n["id"] for n in fresh)
     st.markdown(f"<style>.st-key-iw_bell {{ --iw-unread:'{len(unread) if unread else ''}'; }}</style>",
                 unsafe_allow_html=True)
