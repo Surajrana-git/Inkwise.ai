@@ -434,3 +434,33 @@ def test_insights_shows_review_times_and_team_view():
     sel = next(s for s in at.selectbox if s.label == "Repeat issues by")
     sel.set_value("Team").run()
     assert not at.exception and "Repeat issues by team" in " ".join(m.value for m in at.markdown)
+
+
+def test_notifications_flow_creator_to_manager_and_back():
+    """Asha sends a draft -> Meera is notified; Meera approves -> Asha is notified."""
+    import services
+    names = {"asha": "Asha Menon", "meera": "Meera Kapoor"}
+    sid = services.submit_for_approval("Notify test", "Lumora Pay helps you pay.", [], "asha")
+    mine = [n for n in services.notifications("meera", "Manager", names) if n["id"] == f"sub-{sid}-sent"]
+    assert mine and mine[0]["title"] == "Asha Menon sent “Notify test” for your approval"
+    assert mine[0]["page"] == "pages/Approvals.py"
+    assert not [n for n in services.notifications("asha", "Manager", names) if n["id"] == f"sub-{sid}-sent"]  # not own
+    assert [n for n in services.notifications("asha", "Creator", names) if n["id"] == f"sub-{sid}-waiting"]
+    services.decide_submission(sid, "approved", "Looks good", "meera", "Manager")
+    back = [n for n in services.notifications("asha", "Creator", names) if n["id"] == f"sub-{sid}-approved"]
+    assert back and back[0]["title"] == "Meera Kapoor approved “Notify test”" and "Looks good" in back[0]["detail"]
+    assert not [n for n in services.notifications("meera", "Manager", names) if n["id"] == f"sub-{sid}-sent"]
+    admin = services.notifications("ravi", "Admin", names)
+    assert any(n["id"].startswith("fact-") for n in admin)
+
+
+def test_bell_badge_toasts_once_and_mark_read():
+    at = run("app/pages/Approvals.py", {**MEERA, "landed_for": "meera"})
+    toasts = [t.value for t in at.toast]
+    assert any("for your approval" in t for t in toasts)
+    at.run()                                              # the same notifications do not pop up twice
+    assert not any("for your approval" in t.value for t in at.toast)
+    md = " ".join(m.value for m in at.markdown)
+    assert "NOTIFICATIONS · 2 NEW" in md or "NEW" in md
+    at.button(key="nt_read").click().run()
+    assert "NOTIFICATIONS · 0 NEW" in " ".join(m.value for m in at.markdown)
