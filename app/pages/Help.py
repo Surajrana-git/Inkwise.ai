@@ -67,7 +67,7 @@ TOPICS = [
     {"key": "check", "icon": "✎", "bg": "#E8F6F2", "title": "Check a draft",
      "sub": "Paste copy or load a sample, then run the pre-publication check.",
      "page": "pages/1_Review.py", "as": "asha",
-     "steps": ["Open Review. Pick a sample draft (for example “Launch post”), paste your own copy, or import a PDF or "
+     "steps": ["Sign in as Asha (Creator) and open Check a draft. Pick a sample draft (for example “Launch post”), paste your own copy, or import a PDF or "
                "Word file (up to 12,000 characters).",
                "Optionally add the campaign image, or press “Use sample banner”.",
                "Press “Run pre-publication check”. Rule checks run first; Gemini then looks for claims, tone and "
@@ -87,7 +87,7 @@ TOPICS = [
     {"key": "approve", "icon": "⧗", "bg": "#FFF4E0", "title": "Approvals and sign-off",
      "sub": "How a Manager reviews and signs off a draft.",
      "page": "pages/Approvals.py", "as": "meera",
-     "steps": ["Sign in as Meera (Manager) and open Approvals. The queue shows each draft as “Ready” or “Needs a look”.",
+     "steps": ["Sign in as Meera (Manager) and open Approval queue. The queue shows each draft as “Ready” or “Needs a look”.",
                "Readiness checks show whether every finding was decided and whether any expired fact or unsupported "
                "claim was kept.",
                "Read the Changes or Final copy view and the table of what the creator decided. The bell (top right) "
@@ -111,7 +111,7 @@ TOPICS = [
                "4.5:1 (rule V02). These run without AI.",
                "With AI connected, Gemini reads the text and checks for the Lumora logo (V03); the normal copy rules "
                "then run on that text, so an expired figure on a banner is caught too.",
-               "The image is shown with numbered boxes that match the findings, and the Manager sees it in Approvals."],
+               "The image is shown with numbered boxes that match the findings, and the Manager sees it in the Approval queue."],
      "tip": "Without AI, contrast is an estimate and the finding says so. Text in the image is only read with AI."},
     {"key": "insights", "icon": "▤", "bg": "#E8F6F2", "title": "Guideline insights",
      "sub": "See which rules are unclear, and fix their wording.",
@@ -154,6 +154,11 @@ def faq_items() -> list[tuple[str, str]]:
         ("What happens if the AI is not connected?",
          "The header shows “AI not connected”. Rule checks still run (glossary, expired facts, readability, image "
          "colours and contrast) and the page says what was skipped. A call that hangs is abandoned after a few seconds."),
+        ("Why do people see different tabs?",
+         "Each person works in their own workspace and only sees what their job needs. Asha (Creator) checks and sends "
+         "drafts, Meera (Manager) signs them off and watches unclear guidelines, Ravi (Admin) keeps facts and the brand "
+         "kit current. If you open another person's page, Inkwise says whose it is and offers to continue as them. "
+         "Fact owners can still renew their own team's facts from the link on their Home."),
         ("Why can’t an Admin approve drafts?",
          "Separation of duties: Admins keep facts and the brand kit current; Managers sign off content. Nobody can "
          "approve their own draft, so every published piece has a second pair of eyes."),
@@ -165,15 +170,15 @@ def faq_items() -> list[tuple[str, str]]:
          "5 MB. Images: PNG or JPEG up to 5 MB."),
         ("How accurate is it?", acc),
         ("Where is the full record of what happened?",
-         "History lists every draft with who wrote it, who decided and when, and lets you download an audit report "
-         "as PDF or the whole history as CSV. Review also shows each draft’s timeline."),
+         "My drafts (Creator) and All drafts (Manager, Admin) list every draft with who wrote it, who decided and when, and lets you download an audit report "
+         "as PDF or the whole history as CSV. Check a draft also shows each draft’s timeline."),
         ("How do notifications work?",
          "The bell in the top-right corner shows what needs you. A Manager is told when a creator sends a draft "
          "for approval; the creator is told when it is approved or sent back, with the comment; an Admin is told "
          "about expired or expiring facts and guidelines that look unclear. New items also pop up once when you "
          "sign in or switch person, and each one opens the right page."),
         ("Can I check a PDF or Word file?",
-         "Yes. On Review, use “Import from a PDF, Word or text file”. The text is put in the box so you can edit "
+         "Yes. On Check a draft, use “Import from a PDF, Word or text file”. The text is put in the box so you can edit "
          "it before the check. Scanned PDFs (pictures of text) and old .doc files are not read; the page says so."),
         ("What happens if I refresh the page?",
          "You stay signed in as the same demo person on the same page. A draft you were typing and decisions you "

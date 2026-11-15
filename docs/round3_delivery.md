@@ -10,12 +10,12 @@ and how to check it. Status: ✅ delivered · ⚠️ delivered with a stated gap
 | Re-run the eval correctly | ✅ | The Round 2 "1.2% recall" came from a different test file and a script that never loaded the API key. Fixed; `eval/run_eval.py` now refuses to write results if the AI did not answer. `eval/results.md` |
 | Recall ≥ 80% | ✅ 98.6% (was 51.0% in Round 2) | `eval/results.md` (rules + Gemini, test set, 100 samples) |
 | Precision ≥ 75% | ✅ 88.7% | same |
-| Citation accuracy ≥ 98% | ⚠️ 92.9% (was 83.2% at the start of Round 3) | Evidence verification and per-claim retrieval removed most wrong cites (G03 and G12 went from 11 to 1). 10 of 141 remain, 7 of them G07 (the general claims guideline cited where a specific fact was expected). Rules alone: 97.4% |
+| Citation accuracy ≥ 98% | ⚠️ 92.9% (was 83.2% at the start of Round 3) | Evidence verification and per-claim retrieval removed most wrong cites (G03 and G12 went from 11 to 1). 10 of 141 remained, 7 of them labelled G07: unsupported superlatives and "instant" promises that the AI cited to another source. A new rule check now catches these and cites G07 itself (`rules.check_unsupported_claims`); rules alone now cite correctly 89/89 (100%). The rules + Gemini figure is re-measured in `eval/results.md` |
 | Per-claim retrieval | ✅ | `engine/review.py` `_source_listing`: the brand kit is searched for every sentence (claim) as well as the whole text, round-robin up to 18 sources, and the claims guideline G07 is always included. In a long draft, whole-text search alone missed F07, F02 and F06; per-claim retrieval keeps them (`tests/test_evidence.py`) |
 | Code checks the quoted evidence exists in the cited source; otherwise UNVERIFIED | ✅ | `engine/review.py` `_verify_evidence`; tests `tests/test_evidence.py` |
-| Evidence phrase highlighted inside the source quote | ✅ | Review → open any finding |
-| One-click open of the source | ✅ | Review → finding → **Open G07 in Brand Kit ↗** shows the full entry (owner, expiry, source). Test `test_open_source_in_brand_kit_from_a_finding` |
-| Image checks in the same finding format | ✅ | `engine/visual.py`: V01 palette and V02 WCAG contrast (Pillow, no AI), V03 logo with Gemini Vision; Gemini also reads the text in the image and the copy rules run on it. Review → **Use sample banner**. Brand Kit → **Image rules**. Tests `tests/test_visual.py` |
+| Evidence phrase highlighted inside the source quote | ✅ | Check a draft → open any finding |
+| One-click open of the source | ✅ | Check a draft → finding → **Open G07 in Brand Kit ↗** shows the full entry (owner, expiry, source). Test `test_open_source_in_brand_kit_from_a_finding` |
+| Image checks in the same finding format | ✅ | `engine/visual.py`: V01 palette and V02 WCAG contrast (Pillow, no AI), V03 logo with Gemini Vision; Gemini also reads the text in the image and the copy rules run on it. Check a draft → **Use sample banner**. Brand Kit → **Image rules**. Tests `tests/test_visual.py` |
 
 ## 2. Fact freshness
 
@@ -45,7 +45,7 @@ and how to check it. Status: ✅ delivered · ⚠️ delivered with a stated gap
 
 | Item | Status |
 |---|---|
-| PDF / DOCX review | ✅ Review → **Import from a PDF, Word or text file** (tables included; scanned PDFs and old .doc files get a clear message) |
+| PDF / DOCX review | ✅ Check a draft → **Import from a PDF, Word or text file** (tables included; scanned PDFs and old .doc files get a clear message) |
 | Only the first occurrence was highlighted | ✅ all occurrences |
 | Role selector was not a real login | ✅ improved: sign-in page with one-click demo people, a work-account form, switch user, sign out. Real company accounts are on the roadmap |
 | No accessibility checker beyond the AI | ✅ WCAG contrast and palette rules on images; accessibility guideline checks in copy |
@@ -56,7 +56,7 @@ and how to check it. Status: ✅ delivered · ⚠️ delivered with a stated gap
 
 ## Beyond the commitments
 
-Notifications for every role (bell and pop-ups), sign-in that survives a refresh, a Help Centre with guides and FAQ,
+A workspace per person (Creator studio, Approval desk, Admin console) with only the tabs that person needs, a call to action at the top of each Home, and a clear way back if someone opens another person's page. Notifications for every role (bell and pop-ups), sign-in that survives a refresh, a Help Centre with guides and FAQ,
 audit-report PDFs, a draft trail timeline, redesigned Approvals (readiness checks, Manager-only sign-off, no
 self-approval), live tracked changes and Final copy on Review, and image findings boxed on the creative. Every status in
 the UI has a text label as well as a colour.

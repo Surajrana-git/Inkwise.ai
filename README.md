@@ -25,11 +25,11 @@ the name in the top-right corner, and the **Help** tab answers every question be
 
 | Person | Role | Try this |
 |---|---|---|
-| **Asha Menon** | Creator | Review → load **Launch post** → **Run pre-publication check** → Accept / Edit / Reject each finding (the draft updates live) → **Send for approval**. Add the **sample banner** to check an image too. |
-| **Meera Kapoor** | Manager | Approvals → read the readiness checks and the creator's decisions → **Approve** or **Send back** (a comment is required). Insights → unclear guidelines, review times. |
+| **Asha Menon** | Creator | Check a draft → load **Launch post** → **Run pre-publication check** → Accept / Edit / Reject each finding (the draft updates live) → **Send for approval**. Add the **sample banner** to check an image too. |
+| **Meera Kapoor** | Manager | Approval queue → read the readiness checks and the creator's decisions → **Approve** or **Send back** (a comment is required). Insights → unclear guidelines, review times. |
 | **Ravi Sharma** | Admin | Fact Register → renew an expired fact → open drafts that cite it are re-checked. Accept a clearer guideline wording in Insights. |
 
-The **Review** page also shows a five-step guided story that switches to the right person for each step.
+Each person has their own workspace with only the tabs they need: **Creator studio** (Check a draft, My drafts), **Approval desk** (Approval queue, Insights, All drafts) and **Admin console** (Fact Register, Insights, All drafts). Home opens with the one thing that needs you now. **Check a draft** also has a five-step walkthrough that signs you in as the right person for each step.
 
 All data is synthetic: **Lumora** is a fictional fintech brand written by the team. The evaluation drafts were generated with **Adaption Labs** and labelled by hand.
 
@@ -74,7 +74,7 @@ for tuning). Every label points to a real brand-kit ID. Details: [eval/README.md
 |---|---:|---:|---:|---:|
 | **Rules + Gemini, current engine** (`eval/results.md`, 100 test samples) | **88.7%** | **98.6%** | **92.9%** | **4 / 25** |
 | Rules + Gemini, start of Round 3 | 83.5% | 95.8% | 83.2% | 10 / 25 |
-| Rules only, current engine | 95.0% | 53.1% | 97.4% | 2 / 25 |
+| Rules only, current engine | 95.7% | 62.2% | 100.0% | 2 / 25 |
 
 Recall by type with Gemini: terminology 50/50, claims 23/23, outdated facts 26/26, messaging 12/12,
 accessibility 12/12, tone 19/20. Remaining wrong citations: G07 (5), F01 (1), T01 (1).
@@ -118,7 +118,7 @@ source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt        # macOS with Python 3.9: pip install "cryptography<45" first
 cp .env.example .env                   # add GEMINI_API_KEY (optional: every rule check works without it)
 streamlit run app/Home.py
-pytest                                 # 194 tests
+pytest                                 # 206 tests
 ```
 
 ## AI assistance
