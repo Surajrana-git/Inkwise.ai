@@ -22,8 +22,7 @@ except services.BackendNotConnected as e:
 
 can_decide = ss.role in ("Manager", "Reviewer", "Admin")
 if not can_decide:
-    st.info("You are signed in as Creator. Switch to Manager, Reviewer or Admin in the sidebar to decide.")
-
+    st.info("Creators can't decide on submissions. Sign in with a Manager, Reviewer or Admin demo account.")
 if not pending:
     st.success("Nothing is waiting. New submissions from Review will show up here.")
 
@@ -33,31 +32,21 @@ for s in pending:
         h1.markdown(f"**{html.escape(s['title'])}**")
         h1.caption(f"{s['id']} · by {s['author']} · {s['submitted_at']} · version {s['version']}")
         h2.markdown('<span class="iw-pill open">Pending</span>', unsafe_allow_html=True)
-
         n_acc = sum(f["status"] in ("accepted", "edited") for f in s["findings"])
         n_rej = sum(f["status"] == "rejected" for f in s["findings"])
         st.caption(f"{len(s['findings'])} findings · {n_acc} accepted · {n_rej} rejected")
-
         with st.expander("See text and findings"):
             st.markdown("**Original text**")
             st.write(s["text"])
             for f in s["findings"]:
-                st.markdown(
-                    f"**{f['status'].title()}** · `{f['source_id']}` · "
-                    f"“{f['span']}” → {f['suggested_fix']}"
-                )
-
+                st.markdown(f"**{f['status'].title()}** · `{f['source_id']}` · “{f['span']}” → {f['suggested_fix']}")
         comment = st.text_input("Comment (optional)", key=f"c_{s['id']}")
         a, b, _ = st.columns([1, 1, 4])
-
         decision = None
-        if a.button("Approve", key=f"ap_{s['id']}", type="primary", disabled=not can_decide,
-                    use_container_width=True):
+        if a.button("Approve", key=f"ap_{s['id']}", type="primary", disabled=not can_decide, width="stretch"):
             decision = ("approved", "✅", "Approved")
-        elif b.button("Reject", key=f"rj_{s['id']}", disabled=not can_decide,
-                      use_container_width=True):
+        elif b.button("Reject", key=f"rj_{s['id']}", disabled=not can_decide, width="stretch"):
             decision = ("rejected", "❌", "Rejected")
-
         if decision:
             status, icon, label = decision
             try:
