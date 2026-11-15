@@ -8,9 +8,9 @@ and how to check it. Status: ✅ delivered · ⚠️ delivered with a stated gap
 | Promised | Status | Where / how to check |
 |---|---|---|
 | Re-run the eval correctly | ✅ | The Round 2 "1.2% recall" came from a different test file and a script that never loaded the API key. Fixed; `eval/run_eval.py` now refuses to write results if the AI did not answer. `eval/results.md` |
-| Recall ≥ 80% | ✅ 99.3% (was 51.0% in Round 2) | `eval/results.md` (rules + Gemini, test set, 100/100 answered) |
-| Precision ≥ 75% | ✅ 88.2% | same |
-| Citation accuracy ≥ 98% | ⚠️ 95.1% (was 83.2% at the start of Round 3) | Evidence verification and per-claim retrieval removed most wrong cites (G03 and G12 went from 11 to 0). 7 of 142 remain, 5 of them G07 (the general claims guideline cited where a specific fact was expected). Rules alone: 97.4% |
+| Recall ≥ 80% | ✅ 98.6% (was 51.0% in Round 2) | `eval/results.md` (rules + Gemini, test set, 100 samples) |
+| Precision ≥ 75% | ✅ 88.7% | same |
+| Citation accuracy ≥ 98% | ⚠️ 92.9% (was 83.2% at the start of Round 3) | Evidence verification and per-claim retrieval removed most wrong cites (G03 and G12 went from 11 to 1). 10 of 141 remain, 7 of them G07 (the general claims guideline cited where a specific fact was expected). Rules alone: 97.4% |
 | Per-claim retrieval | ✅ | `engine/review.py` `_source_listing`: the brand kit is searched for every sentence (claim) as well as the whole text, round-robin up to 18 sources, and the claims guideline G07 is always included. In a long draft, whole-text search alone missed F07, F02 and F06; per-claim retrieval keeps them (`tests/test_evidence.py`) |
 | Code checks the quoted evidence exists in the cited source; otherwise UNVERIFIED | ✅ | `engine/review.py` `_verify_evidence`; tests `tests/test_evidence.py` |
 | Evidence phrase highlighted inside the source quote | ✅ | Review → open any finding |

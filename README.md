@@ -72,7 +72,7 @@ for tuning). Every label points to a real brand-kit ID. Details: [eval/README.md
 
 | Setup (test set) | Precision | Recall | Citation accuracy | Clean samples wrongly flagged |
 |---|---:|---:|---:|---:|
-| **Rules + Gemini, current engine** (`eval/results.md`, 100/100 answered) | **88.2%** | **99.3%** | **95.1%** | **5 / 25** |
+| **Rules + Gemini, current engine** (`eval/results.md`, 100 test samples) | **88.7%** | **98.6%** | **92.9%** | **4 / 25** |
 | Rules + Gemini, start of Round 3 | 83.5% | 95.8% | 83.2% | 10 / 25 |
 | Rules only, current engine | 95.0% | 53.1% | 97.4% | 2 / 25 |
 
