@@ -73,7 +73,7 @@ def test_deciding_twice_or_after_someone_else():
     wf.decide_submission(sid, "approved", "ok", "meera", "manager")
     wf.decide_submission(sid, "approved", "ok", "meera", "manager")          # same click again: no error
     with pytest.raises(wf.WorkflowError, match="Only items in review"):
-        wf.decide_submission(sid, "rejected", "", "ravi", "admin")            # already decided by meera
+        wf.decide_submission(sid, "rejected", "", "rita", "reviewer")         # already decided by meera
     with pytest.raises(wf.WorkflowError, match="not found"):
         wf.decide_submission("99999", "approved", "", "meera", "manager")
     events = [h["action"] for h in wf.history(int(sid)) if h["kind"] == "event"]
@@ -118,3 +118,14 @@ def test_demo_samples_use_stored_results_without_calling_gemini(monkeypatch, tmp
     monkeypatch.setattr(review, "review_text", boom)
     out = services.review_text_full(sample["text"])
     assert out["model"] == "stored-model" and out["cached"] and out["findings"][0]["start"] is not None
+
+
+def test_ai_status_reports_missing_key_and_failed_reviews(monkeypatch):
+    import services
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    assert services.ai_status() == {"ok": False, "reason": "No API key configured"}
+    monkeypatch.setenv("GEMINI_API_KEY", "x")
+    services._note_ai(False, "Last review could not reach Gemini")
+    assert services.ai_status()["ok"] is False                      # cached failure is shown, no network call
+    services._note_ai(True, "gemini-3.5-flash-lite")
+    assert services.ai_status()["ok"] is True

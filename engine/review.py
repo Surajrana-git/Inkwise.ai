@@ -90,8 +90,22 @@ def _retryable(e: Exception) -> bool:
 _last_model = ""  # model that answered the most recent call (for disclosure)
 
 
-def _gemini_generate(prompt: str) -> str:
-    """Call Gemini. If a model is busy, retry it once, then move to the next backup model."""
+def _with_deadline(fn, seconds: float):
+    """Run fn() but stop waiting after `seconds`, even if the HTTP library ignores its own timeout
+    (seen on some networks: the call hangs and the page spins forever). Raises TimeoutError."""
+    import concurrent.futures as cf
+    ex = cf.ThreadPoolExecutor(max_workers=1)
+    fut = ex.submit(fn)
+    try:
+        return fut.result(timeout=seconds)
+    except cf.TimeoutError:
+        raise TimeoutError(f"Gemini did not answer within {seconds:.0f} s") from None
+    finally:
+        ex.shutdown(wait=False)
+
+
+def _gemini_generate(prompt, contents=None) -> str:
+    """Call Gemini (text prompt, or `contents` such as [image part, prompt]). If a model is busy, retry it once, then move to the next backup model."""
     global _last_model
     from google import genai
     from google.genai import types
@@ -105,9 +119,12 @@ def _gemini_generate(prompt: str) -> str:
             if time.monotonic() - start > TOTAL_BUDGET_S:
                 raise last_error or TimeoutError("Gemini did not answer in time")
             try:
-                resp = client.models.generate_content(
-                    model=model, contents=prompt,
-                    config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2))
+                left = TOTAL_BUDGET_S - (time.monotonic() - start)
+                resp = _with_deadline(
+                    lambda: client.models.generate_content(
+                        model=model, contents=contents if contents is not None else prompt,
+                        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2)),
+                    max(1.0, min(TIMEOUT_MS / 1000 + 2, left)))
                 _last_model = model
                 return resp.text or ""
             except Exception as e:

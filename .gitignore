@@ -27,3 +27,6 @@ __pycache__/
 .streamlit/secrets.toml
 eval/results_ai.txt
 
+
+# runtime: images saved with submissions
+data/*_images/

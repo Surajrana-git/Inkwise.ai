@@ -7,3 +7,5 @@ textColor = "#1B2A4E"
 
 [client]
 toolbarMode = "minimal"
+[server]
+maxUploadSize = 5

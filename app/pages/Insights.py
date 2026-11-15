@@ -18,9 +18,7 @@ st.set_page_config(page_title="inkwise.ai", page_icon="✒️", layout="wide")
 theme.render_shell()
 ss = st.session_state
 
-st.title("Insights")
-st.caption("Which guidelines reviewers keep overriding, which mistakes keep coming back, and what to do about it. "
-           "Built only from decisions logged in this workspace.")
+theme.page_header("Guideline clarity", "Insights", "Which guidelines reviewers keep overriding, which mistakes keep coming back, and what to do about it. Built only from decisions logged in this workspace.")
 
 if ss.get("flash"):
     st.success(ss.pop("flash"))
@@ -88,7 +86,7 @@ if chart_rows:
                       plot_bgcolor="white", paper_bgcolor="white", font=dict(color=theme.INK))
     fig.add_hline(y=th["reject_rate"], line_dash="dot", line_color=theme.RED, opacity=0.5)
     fig.add_hline(y=th["override_rate"], line_dash="dot", line_color=theme.AMBER, opacity=0.5)
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, config={"displayModeBar": False})
 else:
     theme.empty_state("Findings were shown in this range, but nobody has decided on them yet.")
 
@@ -104,7 +102,7 @@ elif group_pick == "Category":
     figc.update_layout(height=max(220, 40 * len(dfc) + 60), margin=dict(l=10, r=10, t=10, b=10), yaxis_title="",
                        plot_bgcolor="white", paper_bgcolor="white", font=dict(color=theme.INK),
                        yaxis=dict(categoryorder="total ascending"))
-    st.plotly_chart(figc, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(figc, config={"displayModeBar": False})
     st.caption("Hover a bar to see how many different creators raised that category.")
 else:
     st.caption(f"A creator who gets the same category {th['repeat_min']} or more times in the range is marked as a repeat.")
