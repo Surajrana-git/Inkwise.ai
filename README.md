@@ -107,7 +107,7 @@ app/             Streamlit pages: Home, Review, Approvals, Fact Register, Insigh
 data/brand_kit/  Lumora guidelines (15), facts (20), glossary (15), image rules and palette
 eval/            labelled sets, fact-freshness group, evaluation scripts and results
 docs/            delivery, architecture, testing, responsible design, limitations and roadmap, deploy, disclosures
-tests/           194 automated tests
+tests/           206 automated tests
 ```
 
 ## Run locally
