@@ -4,6 +4,8 @@ Round 3 additions (Suraj): startup-once (seed + overrides), review cache keyed b
 hash, one Gemini call at a time, input limits, and wrappers for login, Fact Register,
 Insights and rewording. Pages import this module only; they never import engine.* directly.
 """
+from __future__ import annotations
+
 import datetime as dt
 import hashlib
 import importlib
@@ -111,6 +113,62 @@ def backend_status() -> dict:
         except BackendNotConnected:
             out[part] = False
     return out
+
+
+_ai_state = {"ok": None, "checked": 0.0, "reason": ""}
+AI_CHECK_TTL = 300  # seconds
+
+
+def _note_ai(ok: bool, reason: str = "") -> None:
+    import time
+    _ai_state.update(ok=ok, checked=time.time(), reason=reason)
+
+
+_ai_thread = None
+
+
+def _probe_ai() -> None:
+    """Runs in a background thread: never blocks a page."""
+    import os
+    try:
+        from google import genai
+        from google.genai import types
+        try:
+            opts = types.HttpOptions(timeout=5000, retry_options=types.HttpRetryOptions(attempts=1))
+        except Exception:
+            opts = types.HttpOptions(timeout=5000)
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=opts)
+        model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+        import concurrent.futures as cf
+        ex = cf.ThreadPoolExecutor(max_workers=1)
+        try:
+            ex.submit(client.models.get, model=model).result(timeout=8)   # hard stop: never "Checking AI…" forever
+        finally:
+            ex.shutdown(wait=False)
+        _note_ai(True, model)
+    except Exception as e:
+        msg = str(e)
+        if type(e).__name__ == "TimeoutError" and not msg:
+            msg = "timeout"
+        _note_ai(False, "API key rejected" if ("API_KEY" in msg or "401" in msg or "403" in msg) else
+                 "Quota exhausted" if ("429" in msg or "RESOURCE_EXHAUSTED" in msg) else "Gemini unreachable")
+
+
+def ai_status(force: bool = False) -> dict:
+    """Is Gemini actually reachable with this key? {"ok": True | False | None, "reason": str}.
+
+    Never waits on the network: returns the last known state at once and refreshes it in a
+    background thread every 5 minutes (None = first check still running). Reviews also update it.
+    """
+    import os, threading, time
+    global _ai_thread
+    if not os.getenv("GEMINI_API_KEY"):
+        return {"ok": False, "reason": "No API key configured"}
+    stale = _ai_state["ok"] is None or time.time() - _ai_state["checked"] > AI_CHECK_TTL
+    if (stale or force) and not (_ai_thread and _ai_thread.is_alive()):
+        _ai_thread = threading.Thread(target=_probe_ai, daemon=True)
+        _ai_thread.start()
+    return {"ok": _ai_state["ok"], "reason": _ai_state["reason"] or "Checking"}
 
 
 def health() -> dict:
@@ -258,6 +316,10 @@ def review_text_full(text: str, use_cache: bool = True) -> dict:
     findings = [_to_dict(f) for f in raw]
     _positions(text, findings)
     findings.sort(key=lambda x: (x.get("start") is None, x.get("start") or 0))
+    if model:
+        _note_ai(True, model)
+    elif ai_error and "not set" not in ai_error:
+        _note_ai(False, "Last review could not reach Gemini")
     out = {"findings": findings, "ai_error": ai_error or None, "model": model or "", "cached": False}
     if not ai_error:  # do not cache a rules-only result caused by a Gemini outage
         _cache[key] = out
@@ -270,8 +332,43 @@ def review_text(text: str) -> list[dict]:
     return review_text_full(text)["findings"]
 
 
+DEMO_IMAGES = ROOT / "data" / "demo_images.json"
+
+
+def _image_dir() -> Path:
+    """Images live next to the database (so tests with a temporary DB never touch the real ones)."""
+    import os
+    db = Path(os.getenv("INKWISE_DB", str(ROOT / "data" / "inkwise.sqlite3")))
+    return db.parent / f"{db.stem}_images"
+
+
+def _image_mime(data: bytes) -> str:
+    return "image/png" if data.startswith(b"\x89PNG") else "image/jpeg" if data.startswith(b"\xff\xd8") else "image/webp"
+
+
+def _stored_reading(key: str):
+    try:
+        return json.loads(DEMO_IMAGES.read_text(encoding="utf-8")).get(key)
+    except Exception:
+        return None
+
+
+def _line_box(span: str, lines: list[dict]):
+    """Box of the image line(s) a finding's text came from."""
+    s = (span or "").lower().strip(" .!?")
+    hits = [ln["box"] for ln in lines if ln.get("box") and s and (s in ln["text"].lower() or ln["text"].lower() in s)]
+    if not hits:
+        words = set(s.split())
+        hits = [ln["box"] for ln in lines if ln.get("box") and words & set(ln["text"].lower().split())]
+    if not hits:
+        return None
+    return [min(h[0] for h in hits), min(h[1] for h in hits), max(h[2] for h in hits), max(h[3] for h in hits)]
+
+
 def review_image(image_bytes: bytes, filename: str = "") -> dict:
-    """Visual checks (contrast, brand colours, logo). Raises InputError for bad uploads."""
+    """Check a campaign image: brand colours and contrast (rules), plus the copy checks on any text in it.
+
+    Returns {"findings", "ai_error", "text", "lines", "size", "stored"}. Raises InputError for bad uploads."""
     ensure_started()
     if not image_bytes:
         raise InputError("Choose an image first.")
@@ -280,12 +377,63 @@ def review_image(image_bytes: bytes, filename: str = "") -> dict:
     if not (image_bytes.startswith(b"\x89PNG") or image_bytes.startswith(b"\xff\xd8") or image_bytes[:4] == b"RIFF"):
         raise InputError("That file is not a PNG or JPEG image.")
     mod = _module("visual", "engine.visual", ["review_image"])
-    from engine import knowledge
-    with _gemini_lock:
-        result = mod.review_image(image_bytes, knowledge.get_kb())
-    raw = getattr(result, "findings", None) or (result.get("findings", []) if isinstance(result, dict) else [])
-    ai_error = result.get("ai_error") if isinstance(result, dict) else getattr(result, "ai_error", None)
-    return {"findings": [_to_dict(f) for f in raw], "ai_error": ai_error or None}
+    key = hashlib.sha256(image_bytes).hexdigest()
+    stored = _stored_reading(key)
+    status = ai_status()
+    use_ai = stored is None and status.get("ok") is not False
+    try:
+        if stored is not None:
+            result = mod.review_image(image_bytes, mime=_image_mime(image_bytes), lines=stored.get("lines", []),
+                                      logo_present=stored.get("logo_present"))
+        else:
+            with _gemini_lock:
+                result = mod.review_image(image_bytes, mime=_image_mime(image_bytes), use_ai=use_ai)
+    except getattr(mod, "ImageProblem", ()) as e:     # unreadable, too small, too many pixels: say which
+        raise InputError(str(e))
+    except (OSError, ValueError, SyntaxError) as e:    # Pillow: not an image it can open (incl. UnidentifiedImageError)
+        raise InputError(f"Could not open that image ({type(e).__name__}). Try a PNG or JPEG.")
+    ai_error = result.get("ai_error")
+    if not use_ai and stored is None:
+        ai_error = "AI is not connected, so the text and logo in the image were not checked; colour and contrast were."
+    findings = [dict(_to_dict(f), where="image") for f in result["findings"]]
+    text = result.get("text") or ""
+    if text.strip():
+        if stored is not None and stored.get("text_findings") is not None:
+            tr = {"findings": [_to_dict(f) for f in stored["text_findings"]], "ai_error": None}
+        else:
+            try:
+                tr = review_text_full(text)
+            except InputError:
+                tr = {"findings": [], "ai_error": None}
+        for f in tr["findings"]:
+            g = dict(f, where="image", box=_line_box(f.get("span", ""), result.get("lines", [])))
+            g.pop("occurrences", None), g.pop("start", None), g.pop("end", None)
+            findings.append(g)
+        if tr.get("ai_error") and not ai_error:
+            ai_error = tr["ai_error"]
+    elif stored is None and use_ai and not ai_error:
+        _note_ai(True, "image reading")
+    for n, f in enumerate(findings, 1):
+        f["id"] = f"i-{n:03d}"
+    return {"findings": findings, "ai_error": ai_error or None, "text": text, "lines": result.get("lines", []),
+            "size": result.get("size"), "stored": stored is not None}
+
+
+def save_submission_image(sub_id, image_bytes: bytes) -> None:
+    """Keep the creative next to a submission so the approver sees it."""
+    if not image_bytes:
+        return
+    d = _image_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{int(sub_id)}.png").write_bytes(image_bytes)
+
+
+def submission_image(sub_id):
+    try:
+        p = _image_dir() / f"{int(sub_id)}.png"
+    except (TypeError, ValueError):
+        return None
+    return p.read_bytes() if p.exists() else None
 
 
 # ---------------------------------------------------------------- workflow
@@ -315,6 +463,11 @@ def get_dashboard_stats(role: str) -> dict:
     return _plain(_wf().get_dashboard_stats(role))
 
 
+def draft_history(content_id) -> list[dict]:
+    """Versions and audit events for one draft, oldest first (who created, checked, decided, approved)."""
+    return [_plain(h) for h in _wf().history(int(content_id))]
+
+
 def global_audit(limit: int = 200, action_prefix: str | None = None) -> list[dict]:
     return [_plain(a) for a in _wf().global_audit(limit, action_prefix)]
 
@@ -323,6 +476,10 @@ def global_audit(limit: int = 200, action_prefix: str | None = None) -> list[dic
 
 def authenticate(username: str, password: str, role: str) -> dict | None:
     return _wf().authenticate(username, password, role)
+
+
+def demo_sign_in(username: str) -> dict | None:
+    return _wf().demo_sign_in(username)
 
 
 def demo_accounts() -> list[dict]:
@@ -345,6 +502,10 @@ def fact_owners() -> list[str]:
 
 def can_renew(user: str, role: str, fact_owner: str) -> bool:
     return _wf().can_renew(user, role, fact_owner)
+
+
+def renew_impact(fact_id: str) -> dict:
+    return _plain(_wf().renew_impact(fact_id))
 
 
 def renew_fact(fact_id: str, user: str, role: str, new_expires_on, note: str = "") -> dict:
@@ -374,6 +535,34 @@ def clarity_thresholds() -> dict:
     wf = _wf()
     return {"min_shown": wf.UNCLEAR_MIN_SHOWN, "override_rate": wf.UNCLEAR_OVERRIDE_RATE,
             "reject_rate": wf.UNCLEAR_REJECT_RATE, "repeat_min": wf.REPEAT_MIN_COUNT}
+
+
+# ---------------------------------------------------------------- evaluation summary (Home page)
+
+def eval_summary() -> dict:
+    """Headline numbers from eval/results.md: {"recall", "precision", "citation", "clean_flagged", "set"}."""
+    import re
+    out: dict = {}
+    try:
+        text = (ROOT / "eval" / "results.md").read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for key, label in (("recall", "Recall"), ("precision", "Precision"), ("citation", "Citation accuracy")):
+        m = re.search(label + r": ([\d.]+%) \(([^)]*)\)", text)
+        if m:
+            out[key] = m.group(1)
+            out[key + "_detail"] = m.group(2)
+    m = re.search(r"Clean samples wrongly flagged: (\d+/\d+)", text)
+    if m:
+        out["clean_flagged"] = m.group(1)
+    m = re.search(r"- Set: (.+)", text)
+    if m:
+        out["set"] = m.group(1).strip()
+    out["by_type"] = [(k.replace("_", " "), int(a), int(b))
+                      for k, a, b in re.findall(r"^- ([a-z_]+): (\d+)/(\d+)\s*$", text, flags=re.M)]
+    m = re.search(r"\((\d+) samples\)", text)
+    out["samples"] = m.group(1) if m else ""
+    return out
 
 
 # ---------------------------------------------------------------- knowledge base page

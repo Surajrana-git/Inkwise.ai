@@ -38,7 +38,7 @@ from typing import Iterator, Optional
 from engine.schemas import Finding, FindingStatus, ReviewResult
 
 ROLES = ("creator", "manager", "reviewer", "admin")
-APPROVER_ROLES = ("manager", "reviewer", "admin")
+APPROVER_ROLES = ("manager", "reviewer")   # separation of duties: admins run facts and the brand kit, not sign-off
 STATUSES = ("draft", "in_review", "approved", "changes_requested")
 OPEN_STATUSES = ("draft", "in_review", "changes_requested")
 
@@ -248,7 +248,7 @@ def demo_accounts() -> list[dict]:
     can = {
         "creator": "Review text and images, accept / edit / reject findings, send for approval",
         "manager": "Approve or reject with a comment, Insights, History, renew Product-marketing facts",
-        "admin": "Everything, plus Fact Register renewals and accepting clearer guideline wording",
+        "admin": "Fact Register renewals, brand kit and clearer guideline wording (sign-off stays with Managers)",
     }
     return [{"username": u, "password": DEMO_PASSWORD, "role": r.title(), "team": t, "can": can[r]}
             for u, r, t, _ in DEMO_USERS]
@@ -286,6 +286,19 @@ def authenticate(username: str, password: str, role: str) -> Optional[dict]:
             return None
         _log(con, None, name, "signed_in", role)
     return {"user": name, "role": role.title(), "team": row["team"]}
+
+
+def demo_sign_in(username: str) -> Optional[dict]:
+    """One-click sign-in for the published demo accounts only (their password is shown on screen anyway)."""
+    name = (username or "").strip().lower()
+    if name not in {u for u, *_ in DEMO_USERS}:
+        return None
+    with _conn() as con:
+        row = con.execute("SELECT role, team FROM users WHERE username = ?", (name,)).fetchone()
+        if row is None:
+            return None
+        _log(con, None, name, "signed_in", f"{row['role']} · demo")
+    return {"user": name, "role": row["role"].title(), "team": row["team"]}
 
 
 # ---------------------------------------------------------------- creator actions
@@ -368,12 +381,14 @@ def decide_finding(content_id: int, finding_id: str, status: FindingStatus,
 # ---------------------------------------------------------------- approver actions
 
 def approve(content_id: int, user: str, role: str, approved: bool, comment: str = "") -> None:
-    """Approve, or request changes. Only manager / reviewer / admin may do this.
+    """Approve, or request changes. Only a manager or reviewer may do this, never on their own draft.
 
     Idempotent: deciding an item the same way twice (double-click, refresh) is a no-op.
     """
     role = _check_role(role)
     if role not in APPROVER_ROLES:
+        if role == "admin":
+            raise WorkflowError("Admins manage facts and the brand kit. Drafts are approved by a Manager.")
         raise WorkflowError(f"Role '{role}' cannot approve content")
     new = "approved" if approved else "changes_requested"
     with _conn() as con:
@@ -382,7 +397,7 @@ def approve(content_id: int, user: str, role: str, approved: bool, comment: str 
             return
         if row["status"] != "in_review":
             raise WorkflowError(f"Only items in review can be decided (status is {row['status']})")
-        if role != "admin" and row["author"] == user:
+        if row["author"] == user:
             raise WorkflowError("You cannot approve your own content")
         if approved and not comment:
             open_n = con.execute("SELECT COUNT(*) FROM findings WHERE content_id = ? AND version = ? AND status = 'open'",
@@ -589,6 +604,17 @@ def renew_fact(fact_id: str, user: str, role: str, new_expires_on, note: str = "
     fact.expires_on = new_expires_on
     rechecked = _recheck_fact(fact_id, user)
     return {"fact_id": fact_id, "expires_on": new_expires_on.isoformat(), **rechecked}
+
+
+def renew_impact(fact_id: str) -> dict:
+    """What renewing this fact would change, before the user confirms: open drafts whose findings cite it."""
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT c.id, c.title, c.author, c.status, COUNT(*) AS n FROM content c JOIN findings f ON f.content_id = c.id "
+            "AND f.version = c.current_version WHERE f.source_id = ? AND c.status IN ('draft','in_review','changes_requested') "
+            "GROUP BY c.id ORDER BY c.updated_at DESC", (fact_id,)).fetchall()
+    drafts = [dict(r) for r in rows]
+    return {"fact_id": fact_id, "drafts": drafts, "findings": sum(d["n"] for d in drafts)}
 
 
 def _recheck_fact(fact_id: str, user: str) -> dict:
@@ -868,6 +894,7 @@ def _submission(row: sqlite3.Row) -> dict:
         "status": _UI_STATUS.get(row["status"], row["status"]), "version": row["current_version"],
         "text": item["text"], "findings": [f.model_dump(mode="json") for f in item["findings"]],
         "submitted_at": row["created_at"][:16].replace("T", " "),
+        "updated_at": row["updated_at"][:16].replace("T", " "),
         "decided_by": row["decided_by"], "decided_at": row["decided_at"][:16].replace("T", " "),
         "comment": row["decision_comment"],
     }

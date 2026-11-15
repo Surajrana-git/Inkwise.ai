@@ -1,317 +1,421 @@
-"""Image checks that return the same Finding shape as the text review.
-Owner: Riyana (Round 3, task 6).
+"""Image checks for a campaign creative (Round 3: Visual Brand Inspector).
+Owners: Riyana (first version: contrast tiles, logo check with Gemini Vision, safe image loading)
+and Suraj (palette and contrast rules in the brand kit, reading the text in the image).
 
-review_image(image_bytes, kb) -> ReviewResult
-  1. contrast     text-like regions below the WCAG AA ratio of 4.5:1   (Pillow, rule)
-  2. brand colour dominant colours far from data/brand_kit/colours.json (Pillow, rule)
-  3. logo         is the Lumora logo visible?                           (Gemini Vision)
+Two kinds of check, both cited to the brand kit (data/brand_kit/visual.json):
+  V01  brand colours     rule-based (Pillow + numpy): share of the image in colours outside the Lumora palette
+  V02  readable text     rule-based contrast ratio (WCAG 2.1) between text and its background
+  V03  logo              Gemini Vision: is the Lumora logo visible? (asked in the same call that reads the text)
+Plus, when Gemini is reachable, the text printed on the image is read (with positions) so that
+services.review_image() can run the normal copy checks (expired facts, glossary, claims) on it.
 
-These are heuristics, not a proof. A bad file, a huge file or a tiny image gives one clear
-finding and never an exception. If the AI is not available the logo finding is UNVERIFIED.
+Without AI the colour check still runs, and contrast is estimated by finding text-like areas
+(two flat colours, one a thin minority) in a tile grid. Every finding says how it was found.
 """
 from __future__ import annotations
 
-import colorsys
 import io
 import json
 import logging
-import os
-import re
-from collections import Counter
 from pathlib import Path
-from typing import Callable, Optional, Sequence
 
+import numpy as np
 from PIL import Image
 
-from engine import knowledge
-from engine.review import _model_name  # same model setting as the text review
-from engine.schemas import UNVERIFIED, Category, CheckedBy, Finding, ReviewResult
+from engine.schemas import CheckedBy, Category, Finding
 
 log = logging.getLogger(__name__)
-
-ROOT = Path(__file__).resolve().parent.parent
-PALETTE_FILE = ROOT / "data" / "brand_kit" / "colours.json"
-
-MAX_BYTES = 5 * 1024 * 1024        # upload limit shown to the user
-MAX_PIXELS = 50_000_000            # refuse decompression bombs
-MIN_SIDE = 16                      # smaller than this cannot be judged
-WCAG_AA = 4.5
-TILE = 48                          # contrast is measured on 48 px tiles of a downscaled copy
-BG_MIN_SHARE = 0.4                 # a text-like tile has one flat background colour
-MIN_FAILING_TILES = 2              # ignore a single odd tile (an icon, a speck)
-OFF_BRAND_DELTA_E = 25.0
-MIN_COLOUR_SHARE = 0.08
-VISION_TIMEOUT_MS = 30_000
-
-RGB = tuple[int, int, int]
-Vision = Callable[[bytes, str], str]   # (jpeg bytes, prompt) -> JSON text
-
-LOGO_PROMPT = ('Look at this marketing image for the brand Lumora. Is the Lumora logo or the word "Lumora" '
-               'as a logo clearly visible? Answer ONLY JSON: {"logo_present": true or false}')
+KIT_PATH = Path(__file__).resolve().parents[1] / "data" / "brand_kit" / "visual.json"
+MAX_PIXELS = 50_000_000      # refuse decompression bombs
+MIN_SIDE = 16                # smaller than this cannot be judged
+NEUTRAL_SAT = 0.16            # below this saturation a pixel counts as white / grey / black
+OFF_BRAND_DIST = 70.0         # perceptual RGB distance from the nearest palette colour
 
 
-# ---------------------------------------------------------------- colour maths
-
-def _linear(v: float) -> float:
-    v /= 255
-    return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
-
-
-def luminance(rgb: RGB) -> float:
-    r, g, b = rgb
-    return 0.2126 * _linear(r) + 0.7152 * _linear(g) + 0.0722 * _linear(b)
+def load_kit() -> dict:
+    kit = json.loads(KIT_PATH.read_text(encoding="utf-8"))
+    kit["rules_by_id"] = {r["id"]: r for r in kit["rules"]}
+    return kit
 
 
-def contrast_ratio(a: RGB, b: RGB) -> float:
-    hi, lo = sorted((luminance(a), luminance(b)), reverse=True)
-    return (hi + 0.05) / (lo + 0.05)
+def _hex(rgb) -> str:
+    return "#{:02X}{:02X}{:02X}".format(*[int(round(c)) for c in rgb[:3]])
 
 
-def _lab(rgb: RGB) -> tuple[float, float, float]:
-    r, g, b = (_linear(v) for v in rgb)
-    x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
-    y = 0.2126 * r + 0.7152 * g + 0.0722 * b
-    z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
-    f = lambda t: t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116  # noqa: E731
-    fx, fy, fz = f(x), f(y), f(z)
-    return 116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)
+def _rgb(hexstr: str) -> np.ndarray:
+    h = hexstr.lstrip("#")
+    return np.array([int(h[i:i + 2], 16) for i in (0, 2, 4)], dtype=float)
 
 
-def delta_e(a: RGB, b: RGB) -> float:
-    return sum((p - q) ** 2 for p, q in zip(_lab(a), _lab(b))) ** 0.5
+def _luminance(rgb) -> float:
+    c = np.asarray(rgb, dtype=float) / 255.0
+    c = np.where(c <= 0.03928, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+    return float(0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2])
 
 
-def _hex(rgb: RGB) -> str:
-    return "#%02x%02x%02x" % rgb
+def contrast_ratio(a, b) -> float:
+    la, lb = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
 
 
-def load_palette(path: Path = PALETTE_FILE) -> list[RGB]:
-    """Every #rrggbb code in colours.json (works whatever the file's layout is)."""
-    try:
-        raw = Path(path).read_text(encoding="utf-8")
-    except OSError:
-        return []
-    codes = dict.fromkeys(re.findall(r"#[0-9a-fA-F]{6}\b", raw))
-    return [tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in codes]  # type: ignore[misc]
+def _dist(px: np.ndarray, ref: np.ndarray) -> np.ndarray:
+    """'Redmean' colour distance: cheap and close to how people see differences."""
+    rmean = (px[..., 0] + ref[0]) / 2
+    d = px - ref
+    return np.sqrt((2 + rmean / 256) * d[..., 0] ** 2 + 4 * d[..., 1] ** 2 + (2 + (255 - rmean) / 256) * d[..., 2] ** 2)
 
 
-def _as_rgb(c) -> RGB:
-    if isinstance(c, str):
-        c = c.lstrip("#")
-        return tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
-    return tuple(int(v) for v in c)  # type: ignore[return-value]
+def _where(box) -> str:
+    x = (box[0] + box[2]) / 2
+    y = (box[1] + box[3]) / 2
+    v = "top" if y < .34 else "bottom" if y > .66 else "middle"
+    h = "left" if x < .34 else "right" if x > .66 else "centre"
+    return "centre" if (v, h) == ("middle", "centre") else f"{v} {h}" if h != "centre" else v
 
 
-# ---------------------------------------------------------------- loading
-
-def _problem(why: str, fix: str = "Upload a PNG or JPG smaller than 5 MB.") -> Finding:
-    return Finding(id="", category=Category.MESSAGING, span="image: file", source_id=UNVERIFIED,
-                   why=why, suggested_fix=fix, confidence=1.0, checked_by=CheckedBy.RULE)
+class ImageProblem(ValueError):
+    """An upload we cannot check, with a message for the user."""
 
 
-def _load(image_bytes: bytes) -> tuple[Optional[Image.Image], Optional[Finding]]:
-    if not image_bytes:
-        return None, _problem("No image was uploaded.")
-    if len(image_bytes) > MAX_BYTES:
-        return None, _problem("This image is larger than 5 MB.")
+def open_image(image_bytes: bytes) -> Image.Image:
     try:
         img = Image.open(io.BytesIO(image_bytes))
         if img.width * img.height > MAX_PIXELS:
-            return None, _problem("This image has too many pixels to check.")
+            raise ImageProblem("This image has too many pixels to check. Export it at a normal web size.")
         img.load()
-    except Exception:  # not an image, truncated, or an unsupported format
-        return None, _problem("This file could not be read as an image.")
+    except ImageProblem:
+        raise
+    except Exception:              # not an image, truncated, or an unsupported format
+        raise ImageProblem("This file could not be read as an image. Try a PNG or JPEG.")
     if min(img.size) < MIN_SIDE:
-        return None, _problem("This image is too small to check.", "Upload a larger image.")
-    rgba = img.convert("RGBA")
-    flat = Image.new("RGB", rgba.size, (255, 255, 255))   # transparent areas count as white
-    flat.paste(rgba, mask=rgba.split()[3])
-    flat.thumbnail((640, 640))
-    return flat, None
+        raise ImageProblem("This image is too small to check. Upload a larger image.")
+    if img.mode in ("RGBA", "LA", "P"):
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        img = img.convert("RGBA")
+        bg.paste(img, mask=img.split()[-1])
+        return bg
+    return img.convert("RGB")
 
 
-# ---------------------------------------------------------------- brand-kit lookup
+# ---------------------------------------------------------------- V01 brand colours
 
-def _guideline(kb, keywords: Sequence[str]) -> tuple[str, str, str]:
-    """(source_id, source_text, evidence) for the first guideline that mentions a keyword."""
-    for g in kb.guidelines:
-        text = f"{g.title}. {g.rule}"
-        for sentence in re.split(r"(?<=[.!?])\s+", text):
-            if any(k in sentence.lower() for k in keywords):
-                found = kb.get(g.id)
-                return g.id, found.text if found else text, sentence.strip()
-    return UNVERIFIED, "", ""
-
-
-def _finding(kb, keywords, category, span, why, fix, conf, checked_by=CheckedBy.RULE) -> Finding:
-    sid, source_text, evidence = _guideline(kb, keywords)
-    return Finding(id="", category=category, span=span, source_id=sid, source_text=source_text,
-                   why=why, suggested_fix=fix, confidence=conf if sid != UNVERIFIED else min(conf, 0.6),
-                   checked_by=checked_by, evidence=evidence,
-                   evidence_verified=bool(evidence and evidence in source_text))
-
-
-# ---------------------------------------------------------------- 1. contrast
-
-def _tiles(img: Image.Image):
-    w, h = img.size
-    for ty in range(0, h, TILE):
-        for tx in range(0, w, TILE):
-            box = (tx, ty, min(tx + TILE, w), min(ty + TILE, h))
-            data = img.crop(box).tobytes()            # RGB bytes; avoids the deprecated getdata()
-            yield box, list(zip(data[0::3], data[1::3], data[2::3]))
-
-
-def _text_tile_ratio(pixels: list[RGB]) -> Optional[float]:
-    """Contrast between the flat background and the strongest foreground colour, or None."""
-    n = len(pixels)
-    bucket, count = Counter((r >> 3, g >> 3, b >> 3) for r, g, b in pixels).most_common(1)[0]
-    if count / n < BG_MIN_SHARE:
-        return None                                    # photo, gradient or busy area
-    near = [p for p in pixels if (p[0] >> 3, p[1] >> 3, p[2] >> 3) == bucket]
-    bg = tuple(sum(c) // len(near) for c in zip(*near))
-    dist = lambda p: sum(abs(a - b) for a, b in zip(p, bg))  # noqa: E731
-    far = sorted((p for p in pixels if dist(p) >= 45), key=dist, reverse=True)
-    if len(far) < 10 or len(far) / n > 0.45:
-        return None                                    # nothing text-like in this tile
-    core = far[: max(1, len(far) // 5)]                # most distinct 20%, skips anti-aliasing
-    fg = tuple(sum(c) // len(core) for c in zip(*core))
-    return contrast_ratio(bg, fg)  # type: ignore[arg-type]
-
-
-def _where(box, size) -> str:
-    cx, cy = (box[0] + box[2]) / 2 / size[0], (box[1] + box[3]) / 2 / size[1]
-    v = "top" if cy < 1 / 3 else "middle" if cy < 2 / 3 else "bottom"
-    h = "left" if cx < 1 / 3 else "centre" if cx < 2 / 3 else "right"
-    return f"{v} {h}"
-
-
-def check_contrast(img: Image.Image, kb) -> list[Finding]:
-    bad = []
-    for box, pixels in _tiles(img):
-        ratio = _text_tile_ratio(pixels)
-        if ratio is not None and ratio < WCAG_AA:
-            bad.append((ratio, box))
-    if len(bad) < MIN_FAILING_TILES:
-        return []
-    ratio, box = min(bad)
-    where = _where(box, img.size)
-    return [_finding(
-        kb, ("contrast", "legib", "readab"), Category.ACCESSIBILITY,
-        f"image: text at the {where}, ratio {ratio:.1f}:1",
-        f"Text at the {where} of the image has a contrast ratio of {ratio:.1f}:1. WCAG AA needs at least "
-        f"{WCAG_AA}:1. {len(bad)} regions are affected. This check is a heuristic.",
-        "Use a darker text colour or a lighter background so the ratio is at least 4.5:1.", 0.75)]
-
-
-# ---------------------------------------------------------------- 2. brand colours
-
-def _dominant(img: Image.Image) -> list[tuple[RGB, float]]:
+def check_colours(img: Image.Image, kit: dict) -> list[Finding]:
+    """Quantise to a few colours; a colour block that is saturated, not near any palette colour and covers
+    more than the allowed share is off-brand. Blended edge pixels form tiny blocks and are ignored."""
+    rule = kit["rules_by_id"]["V01"]
     small = img.copy()
-    small.thumbnail((200, 200))
-    q = small.quantize(colors=6, method=Image.Quantize.MEDIANCUT)
-    pal = q.getpalette() or []
-    counts = q.getcolors() or []
-    total = sum(c for c, _ in counts) or 1
-    return sorted(((tuple(pal[i * 3:i * 3 + 3]), c / total) for c, i in counts), key=lambda x: -x[1])  # type: ignore[misc]
-
-
-def check_brand_colours(img: Image.Image, kb, palette: Optional[Sequence] = None) -> list[Finding]:
-    colours = [_as_rgb(c) for c in palette] if palette is not None else load_palette()
-    if not colours:
-        log.info("No brand palette found, skipping the brand colour check")
+    small.thumbnail((320, 320))
+    q = small.quantize(colors=16, method=Image.Quantize.MEDIANCUT)
+    idx = np.asarray(q)
+    pal = np.array(q.getpalette()[:48], dtype=float).reshape(-1, 3)
+    refs = [_rgb(c["hex"]) for c in kit["palette"]]
+    bad = []
+    for k in range(len(pal)):
+        share = float((idx == k).mean())
+        if share < 0.005:
+            continue
+        c = pal[k]
+        sat = (c.max() - c.min()) / max(c.max(), 1)
+        near = min(float(_dist(c[None, :], r)[0]) for r in refs)
+        if c.max() > 48 and sat >= NEUTRAL_SAT and near > OFF_BRAND_DIST:     # near-black counts as neutral
+            bad.append((k, share))
+    total = sum(sh for _k, sh in bad)
+    if total <= rule["max_off_brand_share"]:
         return []
+    k_main = max(bad, key=lambda x: x[1])[0]
+    mask = np.isin(idx, [k for k, _ in bad])
+    ys, xs = np.nonzero(idx == k_main)
+    h, w = idx.shape
+    box = [round(xs.min() / w, 3), round(ys.min() / h, 3), round((xs.max() + 1) / w, 3), round((ys.max() + 1) / h, 3)]
+    main = pal[k_main]
+    primary = kit["palette"][0]          # Lumora Teal: the brand's accent for buttons and highlights
+    others = len(bad) - 1
+    return [Finding(
+        id="v-colour", category=Category.VISUAL, span=f"{_hex(main)} colour ({float(mask.mean()):.0%} of the image)",
+        source_id="V01", source_text=rule["rule"],
+        why=f"{total:.0%} of the image uses colours outside the Lumora palette, mainly {_hex(main)} "
+            f"({_where(box)}){f' and {others} more' if others else ''}. The limit is {rule['max_off_brand_share']:.0%}.",
+        suggested_fix=f"Recolour it with {primary['name']} {primary['hex']} (the brand accent), or another "
+                      f"Lumora palette colour.",
+        confidence=1.0, checked_by=CheckedBy.RULE, where="image", box=box)]
+
+
+# ---------------------------------------------------------------- V02 readable text
+
+def _two_colours(region: np.ndarray):
+    """Split a patch into its two main colours. Returns (major, minor, minor_share, mean_error)."""
+    pts = region.reshape(-1, 3)
+    if len(pts) < 16:
+        return None
+    lum = pts @ np.array([0.299, 0.587, 0.114])
+    lo, hi = np.percentile(lum, 5), np.percentile(lum, 95)
+    if hi - lo < 4:
+        return None
+    a, b = pts[lum <= lo + 2].mean(axis=0), pts[lum >= hi - 2].mean(axis=0)
+    for _ in range(6):                                   # small 2-means
+        da, db = np.linalg.norm(pts - a, axis=1), np.linalg.norm(pts - b, axis=1)
+        m = da <= db
+        if m.all() or (~m).all():
+            return None
+        a, b = pts[m].mean(axis=0), pts[~m].mean(axis=0)
+    err = float(np.minimum(da, db).mean())
+    share_a = float(m.mean())
+    major, minor, minor_share = (a, b, 1 - share_a) if share_a >= .5 else (b, a, share_a)
+    return major, minor, minor_share, err
+
+
+def _contrast_finding(kit, n, ratio, fg, bg, box, span, how, conf) -> Finding:
+    rule = kit["rules_by_id"]["V02"]
+    return Finding(
+        id=f"v-contrast-{n}", category=Category.ACCESSIBILITY, span=span, source_id="V02", source_text=rule["rule"],
+        why=f"Text {_where(box)} has a contrast of {ratio:.1f}:1 ({_hex(fg)} on {_hex(bg)}); "
+            f"the minimum is {rule['min_contrast']}:1. {how}",
+        suggested_fix="Use white or Paper #F7F5F0 text on Navy/Teal, or Navy #1B2A4E text on a light background.",
+        confidence=conf, checked_by=CheckedBy.RULE, where="image", box=[round(v, 3) for v in box])
+
+
+def check_contrast_lines(img: Image.Image, lines: list[dict], kit: dict) -> list[Finding]:
+    """Contrast inside each text line that Gemini located (box = fractions)."""
+    need = kit["rules_by_id"]["V02"]["min_contrast"]
+    px = np.asarray(img, dtype=float)
+    H, W = px.shape[:2]
     out = []
-    for rgb, share in _dominant(img):
-        r, g, b = (v / 255 for v in rgb)
-        _, s, v = colorsys.rgb_to_hsv(r, g, b)
-        if share < MIN_COLOUR_SHARE or s < 0.2 or v < 0.15:
-            continue                                   # tiny areas, white, black and greys are always fine
-        nearest = min(colours, key=lambda c: delta_e(rgb, c))
-        de = delta_e(rgb, nearest)
-        if de > OFF_BRAND_DELTA_E:
-            out.append(_finding(
-                kb, ("colour", "color", "palette"), Category.MESSAGING,
-                f"image: dominant colour {_hex(rgb)} ({share:.0%} of the image)",
-                f"{_hex(rgb)} covers {share:.0%} of the image and is not in the brand palette "
-                f"(closest is {_hex(nearest)}, difference {de:.0f}).",
-                "Use the brand palette: " + ", ".join(_hex(c) for c in colours[:4]) + ".", 0.65))
-        if len(out) == 2:
-            break
+    for ln in lines:
+        x0, y0, x1, y1 = ln["box"]
+        reg = px[int(y0 * H):max(int(y1 * H), int(y0 * H) + 2), int(x0 * W):max(int(x1 * W), int(x0 * W) + 2)]
+        two = _two_colours(reg)
+        if not two:
+            continue
+        bg, fg, _share, _err = two
+        ratio = contrast_ratio(fg, bg)
+        if ratio < need:
+            out.append(_contrast_finding(kit, len(out) + 1, ratio, fg, bg, ln["box"], f"“{ln['text']}”",
+                                         "Measured on the text line the AI located.", 0.95))
     return out
 
 
-# ---------------------------------------------------------------- 3. logo (Gemini Vision)
+def _low_contrast_areas(px: np.ndarray, T: int, need: float) -> list[tuple]:
+    """Text-like tiles of size T whose two colours fail the contrast rule, grouped into areas.
+    Returns [(box, worst_ratio, fg, bg)] with box as fractions."""
+    H, W = px.shape[:2]
+    low = {}
+    for ty in range(0, H - T + 1, T // 2):
+        for tx in range(0, W - T + 1, T // 2):
+            tile = px[ty:ty + T, tx:tx + T]
+            two = _two_colours(tile)
+            if not two:
+                continue
+            bg, fg, share, err = two
+            ratio = contrast_ratio(fg, bg)
+            if not (0.05 <= share <= 0.45 and err < 16 and 1.2 < ratio < need):
+                continue
+            minor = np.linalg.norm(tile - fg, axis=2) < np.linalg.norm(tile - bg, axis=2)
+            rows = np.abs(np.diff(minor.astype(int), axis=1)).sum(axis=1)
+            cols = np.abs(np.diff(minor.astype(int), axis=0)).sum(axis=0)
+            busy_r, busy_c = rows[rows > 0], cols[cols > 0]
+            # letters: several strokes across a row and down a column; a shape edge crosses once
+            if len(busy_r) and len(busy_c) and busy_r.mean() >= 3 and busy_c.mean() >= 2:
+                low[(ty, tx)] = (ratio, fg, bg)
+    seen, areas = set(), []
+    for k in low:
+        if k in seen:
+            continue
+        stack, group = [k], []
+        seen.add(k)
+        while stack:
+            cy, cx = stack.pop()
+            group.append((cy, cx))
+            for dy in (-T // 2, 0, T // 2):
+                for dx in (-T // 2, 0, T // 2):
+                    nb = (cy + dy, cx + dx)
+                    if nb in low and nb not in seen:
+                        seen.add(nb)
+                        stack.append(nb)
+        areas.append(group)
+    merged = True                       # words of one line come out as separate groups: join them
+    while merged:
+        merged = False
+        for i in range(len(areas)):
+            for j in range(i + 1, len(areas)):
+                yi, yj = [p[0] for p in areas[i]], [p[0] for p in areas[j]]
+                xi, xj = [p[1] for p in areas[i]], [p[1] for p in areas[j]]
+                overlap = min(max(yi), max(yj)) - max(min(yi), min(yj))
+                gap = max(min(xj) - max(xi), min(xi) - max(xj))
+                if overlap >= 0 and gap <= 2 * T:
+                    areas[i] += areas.pop(j)
+                    merged = True
+                    break
+            if merged:
+                break
+    out = []
+    for g in areas:
+        if len(g) < 4:
+            continue
+        ys, xs = [p[0] for p in g], [p[1] for p in g]
+        box = [min(xs) / W, min(ys) / H, (max(xs) + T) / W, (max(ys) + T) / H]
+        worst = min((low[p] for p in g), key=lambda r: r[0])
+        out.append((box, *worst))
+    return out
 
-def _jpeg(img: Image.Image) -> bytes:
-    buf = io.BytesIO()
-    img.save(buf, "JPEG", quality=85)
-    return buf.getvalue()
+
+def check_contrast_tiles(img: Image.Image, kit: dict) -> list[Finding]:
+    """No AI: find text-like areas (two flat colours, one a thin stroked minority) at two tile sizes,
+    so both small print and big headlines are seen, and measure their contrast."""
+    need = kit["rules_by_id"]["V02"]["min_contrast"]
+    small = img.copy()
+    small.thumbnail((640, 640))
+    px = np.asarray(small, dtype=float)
+    base = max(16, min(px.shape[:2]) // 18)
+    found = []
+    for T in (base, base * 2):
+        for area in _low_contrast_areas(px, T, need):
+            box = area[0]
+            dup = any(min(box[2], b[2]) > max(box[0], b[0]) and min(box[3], b[3]) > max(box[1], b[1]) for b, *_ in found)
+            if not dup:
+                found.append(area)
+    found.sort(key=lambda a: (a[0][2] - a[0][0]) * (a[0][3] - a[0][1]), reverse=True)
+    return [_contrast_finding(kit, n, ratio, fg, bg, box, f"Text area ({_where(box)})",
+                              "Estimated without AI from the image itself.", 0.7)
+            for n, (box, ratio, fg, bg) in enumerate(found[:4], 1)]
 
 
-def _gemini_vision(jpeg: bytes, prompt: str) -> str:
-    from google import genai
+# ---------------------------------------------------------------- reading the text (Gemini)
+
+READ_PROMPT = (
+    "Read every piece of text printed in this marketing image for the brand Lumora. Return JSON only: "
+    '{"lines": [{"text": "...", "box_2d": [ymin, xmin, ymax, xmax]}], "logo_present": true or false} '
+    "with box_2d on a 0-1000 scale. One entry per visual line, top to bottom. Copy the words exactly; "
+    "do not fix spelling. logo_present is true only if the Lumora logo (or the word Lumora set as a logo) "
+    'is clearly visible. If there is no text, return {"lines": [], "logo_present": ...}.')
+
+
+def read_text_raw(image_bytes: bytes, mime: str = "image/png") -> str:
     from google.genai import types
-
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"],
-                          http_options=types.HttpOptions(timeout=VISION_TIMEOUT_MS))
-    resp = client.models.generate_content(
-        model=_model_name(),
-        contents=[types.Part.from_bytes(data=jpeg, mime_type="image/jpeg"), prompt],
-        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0))
-    return resp.text or ""
+    from engine import review
+    return review._gemini_generate(READ_PROMPT, contents=[types.Part.from_bytes(data=image_bytes, mime_type=mime),
+                                                           READ_PROMPT])
 
 
-def check_logo(img: Image.Image, kb, vision: Optional[Vision] = None) -> tuple[list[Finding], bool]:
-    """Return (findings, ai_answered)."""
-    ask = vision or (_gemini_vision if os.getenv("GEMINI_API_KEY") else None)
-    unavailable = _finding(
-        kb, ("logo",), Category.MESSAGING, "image: logo",
-        "The logo check needs the AI service, which was not available, so the logo could not be checked.",
-        "Check by eye that the Lumora logo is visible.", 0.3, CheckedBy.AI)
-    unavailable = unavailable.model_copy(update={"source_id": UNVERIFIED, "source_text": "",
-                                                 "evidence": "", "evidence_verified": False})
-    if ask is None:
-        return [unavailable], False
+def read_text(image_bytes: bytes, mime: str = "image/png") -> list[dict]:
+    """Text lines with boxes as fractions: [{"text", "box": [x0, y0, x1, y1]}]. Raises if Gemini fails."""
+    return parse_lines(read_text_raw(image_bytes, mime))
+
+
+def read_image(image_bytes: bytes, mime: str = "image/png") -> dict:
+    """One Gemini call: {"lines": [...], "logo_present": bool | None}. Raises if Gemini fails."""
+    raw = read_text_raw(image_bytes, mime)
+    return {"lines": parse_lines(raw), "logo_present": parse_logo(raw)}
+
+
+def parse_logo(raw):
     try:
-        raw = re.sub(r"^```(?:json)?|```$", "", ask(_jpeg(img), LOGO_PROMPT).strip(), flags=re.M).strip()
-        present = bool(json.loads(raw).get("logo_present"))
-    except Exception as e:  # timeout, 429, bad JSON: say so, do not crash
-        log.warning("Logo check failed: %s", e)
-        return [unavailable], False
-    if present:
-        return [], True
-    return [_finding(
-        kb, ("logo",), Category.MESSAGING, "image: logo",
-        "The AI could not see the Lumora logo in this image.",
-        "Add the Lumora logo, clearly visible and not cropped.", 0.6, CheckedBy.AI)], True
+        txt = raw if isinstance(raw, dict) else (raw or "")
+        if isinstance(txt, str):
+            txt = txt.strip()
+            start = txt.find("{")
+            txt = json.JSONDecoder().raw_decode(txt[start:])[0] if start >= 0 else {}
+        v = txt.get("logo_present") if isinstance(txt, dict) else None
+        return v if isinstance(v, bool) else None
+    except Exception:
+        return None
 
 
-# ---------------------------------------------------------------- public API
-
-def review_image(image_bytes: bytes, kb: Optional[knowledge.KnowledgeBase] = None, *,
-                 palette: Optional[Sequence] = None, vision: Optional[Vision] = None,
-                 check_logo_with_ai: bool = True) -> ReviewResult:
-    """Check one uploaded image. Never raises: a bad input becomes a single finding."""
-    try:
-        img, problem = _load(image_bytes)
-        if problem:
-            return _result([problem], "")
-        kb = kb or knowledge.get_kb()
-        findings = check_contrast(img, kb) + check_brand_colours(img, kb, palette)
-        model = ""
-        if check_logo_with_ai:
-            logo, answered = check_logo(img, kb, vision)
-            findings += logo
-            if answered:
-                model = _model_name() if vision is None else "injected-vision"
-        return _result(findings, model)
-    except Exception as e:  # last safety net for the live demo
-        log.exception("Image review failed: %s", e)
-        return _result([_problem("Something went wrong while checking this image.",
-                                 "Try another image, or run the check again.")], "")
+def check_logo(present, kit: dict) -> list[Finding]:
+    if present is not False:                     # True, or the AI did not say: nothing to report
+        return []
+    rule = kit["rules_by_id"]["V03"]
+    return [Finding(
+        id="v-logo", category=Category.VISUAL, span="Lumora logo", source_id="V03", source_text=rule["rule"],
+        why="The AI could not see the Lumora logo in this image.",
+        suggested_fix="Add the Lumora logo, clearly visible and not cropped.",
+        confidence=0.6, checked_by=CheckedBy.AI, where="image")]
 
 
-def _result(findings: list[Finding], model: str) -> ReviewResult:
-    numbered = [f.model_copy(update={"id": f"f-{i:03d}"}) for i, f in enumerate(findings, 1)]
-    return ReviewResult(text="(image)", findings=numbered, redactions=0, model=model)
+def parse_lines(raw) -> list[dict]:
+    """Accept the shapes models actually return: {"lines": [...]}, a bare list, another key name,
+    'text'/'content'/'line' for the words and 'box_2d'/'box'/'bbox'/'bounding_box' for the position."""
+    if isinstance(raw, (dict, list)):
+        data = raw
+    else:
+        txt = (raw or "").strip()
+        if txt.startswith("```"):
+            txt = txt.split("\n", 1)[1] if "\n" in txt else ""
+            txt = txt.rsplit("```", 1)[0]
+        start = min([i for i in (txt.find("{"), txt.find("[")) if i >= 0] or [0])
+        try:
+            data = json.JSONDecoder().raw_decode(txt[start:])[0] if txt else {}   # ignores text after the JSON
+        except json.JSONDecodeError:
+            data = {}
+    if isinstance(data, dict):
+        items = data.get("lines")
+        if items is None:
+            items = next((v for v in data.values() if isinstance(v, list)), [])
+    else:
+        items = data
+    out = []
+    for ln in items or []:
+        if isinstance(ln, str):
+            ln = {"text": ln}
+        if not isinstance(ln, dict):
+            continue
+        t = str(ln.get("text") or ln.get("content") or ln.get("line") or "").strip()
+        b = ln.get("box_2d") or ln.get("box") or ln.get("bbox") or ln.get("bounding_box")
+        if not t:
+            continue
+        box = None
+        if isinstance(b, dict):
+            b = [b.get("ymin"), b.get("xmin"), b.get("ymax"), b.get("xmax")]
+        if isinstance(b, (list, tuple)) and len(b) == 4 and all(isinstance(v, (int, float)) for v in b):
+            scale = 1.0 if max(b) <= 1.0 else 1000.0
+            y0, x0, y1, x1 = [min(max(float(v) / scale, 0), 1) for v in b]
+            if x1 > x0 and y1 > y0:
+                box = [x0, y0, x1, y1]
+        out.append({"text": t, "box": box})
+    return out
+
+
+def join_lines(lines: list[dict]) -> str:
+    """Rebuild sentences: a line that continues in lower case joins the previous one; a new capitalised
+    line after one without end punctuation starts a new sentence."""
+    out = ""
+    for ln in lines:
+        t = ln["text"].strip()
+        if not out:
+            out = t
+        elif t[:1].islower() or out[-1:] in ",-–":
+            out += " " + t
+        else:
+            out += ("" if out[-1:] in ".!?" else ".") + " " + t
+    return out
+
+
+# ---------------------------------------------------------------- entry point
+
+def review_image(image_bytes: bytes, kb=None, mime: str = "image/png", lines: list[dict] | None = None,
+                 use_ai: bool = True, logo_present=None, reader=None) -> dict:
+    """Run the image checks. `lines`/`logo_present` let a caller pass a stored reading (demo) instead of
+    calling Gemini; `reader(image_bytes, mime) -> {"lines", "logo_present"}` replaces Gemini in tests.
+
+    Returns {"findings": [Finding], "lines", "text", "logo_present", "ai_error", "size"}.
+    Raises ImageProblem for an upload that cannot be checked."""
+    kit = load_kit()
+    img = open_image(image_bytes)
+    ai_error = None
+    if lines is None and use_ai:
+        try:
+            reading = (reader or read_image)(image_bytes, mime)
+            lines, logo_present = reading.get("lines", []), reading.get("logo_present")
+        except Exception as e:                       # no key, offline, quota: keep the rule checks
+            log.warning("image reading failed: %s", e)
+            ai_error = (f"Could not read the image with AI ({type(e).__name__}); the text and logo were not "
+                        "checked, colour and contrast were.")
+            lines = None
+    elif lines is None:
+        ai_error = "AI is off, so the text and logo in the image were not checked; colour and contrast were."
+    findings = check_colours(img, kit)
+    boxed = [ln for ln in (lines or []) if ln.get("box")]
+    findings += check_contrast_lines(img, boxed, kit) if boxed else check_contrast_tiles(img, kit)
+    findings += check_logo(logo_present, kit)
+    text = join_lines(lines or [])
+    return {"findings": findings, "lines": lines or [], "text": text, "logo_present": logo_present,
+            "ai_error": ai_error, "size": img.size}

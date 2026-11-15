@@ -127,8 +127,11 @@ class _BM25:
 def gemini_embedder(api_key: Optional[str] = None, model: str = EMBED_MODEL) -> EmbedFn:
     """Return a function that embeds a batch of texts with Gemini."""
     from google import genai  # imported lazily so tests run without the SDK configured
+    from google.genai import types
 
-    client = genai.Client(api_key=api_key or os.environ["GEMINI_API_KEY"])
+    # A hard time limit: without it a stalled network call at startup blocks every page of the app.
+    client = genai.Client(api_key=api_key or os.environ["GEMINI_API_KEY"],
+                          http_options=types.HttpOptions(timeout=10_000))
 
     def embed(texts: list[str]) -> list[list[float]]:
         out: list[list[float]] = []
