@@ -86,18 +86,20 @@ SUB = {
     "Admin": "Keep facts current, settle unclear guidelines and keep an eye on the whole workspace.",
     "Reviewer": "Drafts waiting for a decision, with the evidence behind every finding.",
 }
-theme.page_header(f"Workspace · {theme.ORG}", f"{greet}, {first}", SUB.get(role, ""))
+theme.page_header(f"{theme.WORKSPACE.get(role, ('Workspace', ''))[0]} · {theme.ORG}", f"{greet}, {first}", SUB.get(role, ""))
 
-wf_error, stats, queue, activity, facts = None, {}, [], [], []
+wf_error, stats, queue, activity, facts, submissions, unclear = None, {}, [], [], [], [], 0
 try:
     stats = services.get_dashboard_stats(role)
     submissions = services.list_submissions()
     activity = services.get_recent_activity(8)
     facts = services.fact_register()
+    if role != "Creator":
+        unclear = sum(1 for g in services.guideline_stats() if g.get("unclear") and not g.get("accepted_rewording"))
     if role == "Creator":
         queue = [s for s in submissions if s.get("author") == user and s.get("status") in ("rejected", "pending")]
     else:
-        queue = [s for s in submissions if s.get("status") == "pending"]
+        queue = [s for s in submissions if s.get("status") == "pending" and s.get("author") != user]
 except services.BackendNotConnected as e:
     wf_error = e
 
@@ -132,20 +134,41 @@ else:
 st.write("")
 
 d = "–"
-theme.stat_cards([
-    (stats.get("reviews_today", d), "Reviews today", "✎", "#E8F6F2", "#0B5E52"),
-    (stats.get("open_findings", d), "Open findings", "◎", "#EEF2FF", "#3C4FB8"),
-    (stats.get("pending_approvals", d), "Waiting for approval", "⧗", "#FFF4E0", "#8A4B06"),
-    (stats.get("expired_facts", d), "Expired facts", "!", "#FDECEC", "#B42318"),
-    (stats.get("expiring_facts", d), "Expiring in 30 days", "◷", "#FFF7E6", "#9A5B00"),
-])
+_n = lambda rows, **kv: sum(1 for s in rows if all(s.get(k) == v for k, v in kv.items()))  # noqa: E731
+mine = [s for s in submissions if s.get("author") == user]
+if role == "Creator":           # my own drafts and where they are
+    cards = [
+        (len(mine), "My drafts", "✎", "#E8F6F2", "#0B5E52"),
+        (_n(mine, status="pending"), "Waiting for approval", "⧗", "#FFF4E0", "#8A4B06"),
+        (_n(mine, status="rejected"), "Sent back to me", "↩", "#FDECEC", "#B42318"),
+        (_n(mine, status="approved"), "Approved", "✓", "#E8F6F2", "#0B5E52"),
+        (stats.get("reviews_today", d), "Checks today", "◎", "#EEF2FF", "#3C4FB8"),
+    ]
+elif role == "Admin":           # facts and guidelines
+    cards = [
+        (stats.get("expired_facts", d), "Expired facts", "!", "#FDECEC", "#B42318"),
+        (stats.get("expiring_facts", d), "Expiring in 30 days", "◷", "#FFF7E6", "#9A5B00"),
+        (unclear, "Guidelines that look unclear", "?", "#EEF2FF", "#3C4FB8"),
+        (len(facts), "Facts in the register", "≡", "#E8F6F2", "#0B5E52"),
+        (len(submissions), "Drafts in the workspace", "✎", "#F3F5F9", "#5A6480"),
+    ]
+else:                           # Manager: the sign-off desk
+    cards = [
+        (len(queue), "Waiting for you", "⧗", "#FFF4E0", "#8A4B06"),
+        (_n(submissions, decided_by=user, status="approved"), "Approved by you", "✓", "#E8F6F2", "#0B5E52"),
+        (_n(submissions, decided_by=user, status="rejected"), "Sent back by you", "↩", "#FDECEC", "#B42318"),
+        (unclear, "Guidelines that look unclear", "?", "#EEF2FF", "#3C4FB8"),
+        (stats.get("reviews_today", d), "Checks today", "◎", "#F3F5F9", "#5A6480"),
+    ]
+theme.stat_cards(cards)
 st.write("")
 
 left, right = st.columns([1.75, 1], gap="large")
 
 with left:
     # needs attention
-    title = "Returned to you or waiting" if role == "Creator" else "Waiting for your decision"
+    title = {"Creator": "Returned to you or waiting", "Admin": "Drafts waiting for a Manager"}.get(
+        role, "Waiting for your decision")
     rows = ""
     for s in queue[:6]:
         stc = s.get("status", "")
@@ -161,7 +184,8 @@ with left:
                 f'{rows or empty}</div>', unsafe_allow_html=True)
     if queue:
         try:
-            st.page_link(PAGE_APPROVALS if role != "Creator" else "pages/History.py", label="Open the full list →")
+            st.page_link(PAGE_APPROVALS if role in ("Manager", "Reviewer") else "pages/History.py",
+                         label="Open the full list →")
         except Exception:
             pass
 
@@ -220,15 +244,29 @@ with right:
             f'{bars}<div class="sub" style="margin-top:8px">Method and raw results: eval/results.md</div></div>',
             unsafe_allow_html=True)
 
-    # fact health
-    risky = [f for f in facts if f["status"] != "valid"][:4]
+    # fact health: Admins see every fact; everyone else sees the facts their own team owns (they may renew those)
+    team = st.session_state.get("team", "")
+    pool = facts if role == "Admin" else [f for f in facts if team and f.get("owner") == team]
+    risky = [f for f in pool if f["status"] != "valid"][:4]
     frows = "".join(
         f'<div class="iw-row"><span class="iw-dot" style="background:{"#D93025" if f["status"] == "expired" else "#B45309"}"></span>'
         f'<div class="t"><b>{html.escape(f["id"])} · {html.escape(f["statement"])}</b>'
         f'<small>{html.escape(f["owner"])} · {"expired" if f["status"] == "expired" else "expires"} {html.escape(f["expires_on"])}</small></div></div>'
         for f in risky)
-    st.markdown(f'<div class="iw-panel"><h3>Fact health</h3><div class="sub">{stats.get("expired_facts", 0)} expired · '
-                f'{stats.get("expiring_facts", 0)} expiring in 30 days</div>{frows or empty}</div>', unsafe_allow_html=True)
+    if role == "Admin":
+        fh_title, fh_sub = "Fact health", (f'{stats.get("expired_facts", 0)} expired · '
+                                          f'{stats.get("expiring_facts", 0)} expiring in 30 days')
+    else:
+        fh_title = "Facts your team owns"
+        fh_sub = (f"{len(pool)} owned by {html.escape(team)} · {len(risky)} need attention" if team
+                  else "You do not own any facts")
+    st.markdown(f'<div class="iw-panel"><h3>{fh_title}</h3><div class="sub">{fh_sub}</div>{frows or empty}</div>',
+                unsafe_allow_html=True)
+    if risky and role != "Admin":
+        try:
+            st.page_link("pages/Fact_Register.py", label="Renew your team's facts →")
+        except Exception:
+            pass
 
 if stats.get("seeded_at"):
     st.caption(f"Demo workspace: sample history was loaded on {stats['seeded_at']} UTC and comes back automatically "

@@ -148,7 +148,7 @@ def test_fact_register_creator_read_only_admin_renews():
 
 def test_insights_blocked_for_creator_and_admin_can_accept_rewording():
     c = run("app/pages/Insights.py", ASHA)
-    assert any("Managers and Admins" in i.value for i in c.info)
+    assert "NOT IN YOUR WORKSPACE" in " ".join(x.value for x in c.markdown)
     m = run("app/pages/Insights.py", MEERA)
     assert labels(m).count("Suggest clearer wording") >= 1          # seeded data crosses the threshold
     assert "Accept this wording" not in labels(m)                   # manager cannot accept
@@ -307,11 +307,38 @@ def test_approvals_page_queue_detail_and_decisions():
 
 
 @pytest.mark.parametrize("who", [ASHA, RAVI], ids=["creator", "admin"])
-def test_approvals_page_is_view_only_for_creators_and_admins(who):
+def test_approvals_page_is_not_in_creator_or_admin_workspace(who):
     m = run("app/pages/Approvals.py", who)
     assert not m.exception
-    assert "View only." in " ".join(x.value for x in m.markdown)
+    md = " ".join(x.value for x in m.markdown)
+    assert "NOT IN YOUR WORKSPACE" in md and "Approval desk" in md
     assert "✓  Approve and publish" not in labels(m) and "↩  Send back" not in labels(m)
+    m.button(key="guard_switch").click().run()           # one click to continue as the Manager
+    assert m.session_state["user"] == "meera" and "✓  Approve and publish" in labels(m)
+
+
+@pytest.mark.parametrize("who", [MEERA, RAVI], ids=["manager", "admin"])
+def test_review_page_belongs_to_the_creator_studio(who):
+    at = run("app/pages/1_Review.py", {**who, "landed_for": who["user"]})
+    assert not at.exception
+    assert "Creator studio" in " ".join(x.value for x in at.markdown)
+    assert not [b for b in at.button if b.key == "rv_run"]
+
+
+def test_each_person_sees_only_their_own_tabs():
+    import theme
+    tabs = lambda r: [label for _p, label, _r in theme.visible_tabs(r)]  # noqa: E731
+    assert tabs("Creator") == ["Home", "Review", "History", "Brand Kit", "Help"]
+    assert tabs("Manager") == ["Home", "Approvals", "Insights", "History", "Brand Kit", "Help"]
+    assert tabs("Admin") == ["Home", "Fact Register", "Insights", "History", "Brand Kit", "Help"]
+    assert theme.can_open("pages/Fact_Register.py", "Creator")    # fact owners can still renew their team's facts
+
+
+@pytest.mark.parametrize("who,label", [("asha", "My drafts"), ("meera", "Waiting for you"), ("ravi", "Expired facts")])
+def test_home_is_different_for_each_person(who, label):
+    person = {"asha": ASHA, "meera": MEERA, "ravi": RAVI}[who]
+    at = run("app/Home.py", {**person, "landed_for": who})
+    assert not at.exception and label in " ".join(x.value for x in at.markdown)
 
 
 def test_sample_banner_checked_with_the_copy_then_sent_with_its_image(monkeypatch):

@@ -678,16 +678,72 @@ FULL_NAMES = {"asha": "Asha Menon", "meera": "Meera Kapoor", "ravi": "Ravi Sharm
 
 def full_name(u: str) -> str:
     return FULL_NAMES.get((u or "").lower(), (u or "").title())
-NAV = [  # (page file, tab label, roles that see it; None = everyone)
+NAV = [  # (page file, tab label, roles that see it; None = everyone). Each person sees only their own workspace.
     ("Home.py", "Home", None),
-    ("pages/1_Review.py", "Review", None),
-    ("pages/Approvals.py", "Approvals", None),
-    ("pages/Fact_Register.py", "Fact Register", None),
-    ("pages/Insights.py", "Insights", ("Manager", "Admin")),
+    ("pages/1_Review.py", "Review", ("Creator",)),
+    ("pages/Approvals.py", "Approvals", ("Manager", "Reviewer")),
+    ("pages/Fact_Register.py", "Fact Register", ("Admin",)),
+    ("pages/Insights.py", "Insights", ("Manager", "Reviewer", "Admin")),
     ("pages/History.py", "History", None),
     ("pages/Knowledge_Base.py", "Brand Kit", None),
     ("pages/Help.py", "Help", None),
 ]
+
+# Every person gets a workspace with only the pages they need: Creators write and check, Managers sign off,
+# Admins keep facts and the brand kit current.
+WORKSPACE = {
+    "Creator": ("Creator studio", "Write, check and send drafts for approval"),
+    "Manager": ("Approval desk", "Sign off drafts and spot guidelines people find unclear"),
+    "Reviewer": ("Approval desk", "Sign off drafts and spot guidelines people find unclear"),
+    "Admin": ("Admin console", "Keep facts and the brand kit current"),
+}
+# Pages that belong to one workspace, and the demo person who works there. Fact Register is not here: anyone whose
+# team owns a fact may renew it, so it stays open (it is in the Admin's tabs and linked from everyone's Home).
+WORKSPACE_PAGES = {
+    "pages/1_Review.py": ("asha", "the Creator studio", "writing and checking drafts"),
+    "pages/Approvals.py": ("meera", "the Approval desk", "signing off drafts"),
+    "pages/Insights.py": ("meera", "the Approval desk and the Admin console", "guideline insights"),
+}
+
+
+def can_open(page: str, role: str) -> bool:
+    if page not in WORKSPACE_PAGES:
+        return True
+    roles = next((r for p, _l, r in NAV if p == page), None)
+    return roles is None or role in roles
+
+
+def visible_tabs(role: str) -> list:
+    return [t for t in NAV if t[2] is None or role in t[2]]
+
+
+def _workspace_guard() -> None:
+    """A page from another person's workspace (opened by link or address): say whose it is and offer both ways out."""
+    ss = st.session_state
+    page, role = _current_page(), ss.get("role", "Creator")
+    if can_open(page, role):
+        return
+    owner, where, what = WORKSPACE_PAGES[page]
+    mine = WORKSPACE.get(role, ("your workspace", ""))[0]
+    st.markdown(
+        f'<div class="iw-guard"><span class="ic">⇄</span><div><small>NOT IN YOUR WORKSPACE</small>'
+        f'<h3>This page is part of {html.escape(where)}</h3>'
+        f'<p>{html.escape(full_name(ss.get("user", "")))} works in the <b>{html.escape(mine)}</b>, so '
+        f'{html.escape(what)} is not one of your tabs. {html.escape(full_name(owner))} '
+        f'({html.escape(ROLE_INFO.get(owner, ("", "", ""))[1])}) does this in the demo.</p></div></div>',
+        unsafe_allow_html=True)
+    c1, c2, _ = st.columns([1.2, 1.6, 3])
+    with c1:
+        try:
+            st.page_link("Home.py", label="← Back to my workspace", width="stretch")
+        except Exception:
+            pass
+    if c2.button(f"Continue as {full_name(owner)}", key="guard_switch", type="primary", width="stretch"):
+        if switch_user(owner):
+            st.rerun()
+    footer()
+    st.stop()
+
 
 SHELL_CSS = f"""
 <style>
@@ -742,6 +798,15 @@ SHELL_CSS = f"""
   padding:2px 0 7px; margin-bottom:2px; border-bottom:1px solid rgba(255,255,255,.08); white-space:nowrap; overflow:hidden; }}
 .iw-strip b {{ color:#fff; font-weight:600; }}
 .iw-strip .sp {{ flex:1; }}
+.iw-strip .pill.ws {{ background:rgba(63,208,182,.18); color:#7FE6D2; border-color:rgba(63,208,182,.35); font-weight:700; }}
+.iw-guard {{ display:flex; gap:16px; align-items:flex-start; background:#fff; border:1px solid #E2E7F0; border-radius:16px;
+  padding:22px 24px; margin:26px 0 14px; box-shadow:0 8px 24px rgba(20,24,33,.05); max-width:760px; }}
+.iw-guard .ic {{ width:44px; height:44px; border-radius:12px; background:#E8F6F2; color:#0B5E52; display:flex;
+  align-items:center; justify-content:center; font-size:1.3rem; flex:none; }}
+.iw-guard small {{ font-size:.66rem; letter-spacing:.12em; color:#8A93A6; font-weight:700; }}
+.iw-guard h3 {{ font-family:'Instrument Serif', Georgia, serif !important; font-weight:400 !important; color:{NAVY} !important;
+  font-size:1.6rem !important; margin:2px 0 6px !important; padding:0 !important; }}
+.iw-guard p {{ color:#5A6480; font-size:.9rem; margin:0; line-height:1.5; }}
 .iw-strip .pill {{ font-style:normal; font-weight:600; padding:2px 9px; border-radius:999px;
   background:rgba(255,255,255,.08); color:rgba(255,255,255,.82); }}
 .iw-strip .pill.mint {{ background:rgba(63,208,182,.16); color:#7FE6D2; }}
@@ -966,8 +1031,8 @@ LIVE_LEGEND = ('<div class="rv-legend">'
 
 
 FOOTER_PRODUCT = [("pages/1_Review.py", "Pre-publication check"), ("pages/Approvals.py", "Approvals and sign-off"),
-                  ("pages/Fact_Register.py", "Fact Register"), ("pages/History.py", "History and audit reports"),
-                  ("pages/Knowledge_Base.py", "Brand kit")]
+                  ("pages/Fact_Register.py", "Fact Register"), ("pages/Insights.py", "Guideline insights"),
+                  ("pages/History.py", "History and audit reports"), ("pages/Knowledge_Base.py", "Brand kit")]
 FOOTER_TRUST = ["Every finding cites its source", "Facts with owners and expiry dates", "A person approves every change",
                 "Personal data masked before AI", "Full audit trail"]
 
@@ -1036,8 +1101,10 @@ def footer() -> None:
                         unsafe_allow_html=True)
         with c2:
             st.markdown('<div class="iw-ft-h">PRODUCT</div>', unsafe_allow_html=True)
+            mine = {p for p, _l, _r in visible_tabs(st.session_state.get("role", "Creator"))}
             for page, label in FOOTER_PRODUCT:
-                link(page, label)
+                if page in mine:
+                    link(page, label)
         with c3:
             st.markdown('<div class="iw-ft-h">TRUST AND GOVERNANCE</div>'
                         + "".join(f'<div class="iw-ft-li">{html.escape(x)}</div>' for x in FOOTER_TRUST),
@@ -1046,8 +1113,7 @@ def footer() -> None:
             st.markdown('<div class="iw-ft-h">RESOURCES</div>', unsafe_allow_html=True)
             link("pages/Help.py", "Help Centre")
             link("pages/Help.py", "Methodology and AI disclosure")
-            link("pages/Insights.py" if st.session_state.get("role") in ("Manager", "Admin") else "pages/Help.py",
-                 "Guideline insights" if st.session_state.get("role") in ("Manager", "Admin") else "Known limitations")
+            link("pages/Help.py", "Known limitations")
         st.markdown(team_html(), unsafe_allow_html=True)
         st.markdown('<div class="iw-ft-legal"><span>© 2026 <b>Inkwise.ai</b></span>'
                     '<span>Lumora is a fictional brand; all data is synthetic</span>'
@@ -1136,7 +1202,7 @@ def journey() -> None:
         h1, h2 = st.columns([8, 1])
         h1.markdown('<div class="jh"><b>Try the end-to-end story</b><small>about 3 minutes</small></div>'
                     '<div class="js">Each step switches to the right person for you. You can also explore freely; '
-                    'every page works for every role it is shown to.</div>', unsafe_allow_html=True)
+                    'each person only sees the pages of their own workspace.</div>', unsafe_allow_html=True)
         h2.button("Hide", key="j_hide", on_click=ss.__setitem__, args=("journey_hidden", True))
         for col, (n, who, title, text, page, sample) in zip(st.columns(len(JOURNEY)), JOURNEY):
             with col:
@@ -1264,6 +1330,7 @@ def header() -> None:
         st.markdown(
             '<div class="iw-strip"><span>Content governance before you publish</span>'
             '<i class="pill mint">CodeTitans India 2026</i><span>Round 3 · The Finish</span>'
+            f'<i class="pill ws">{html.escape(WORKSPACE.get(role, ("Workspace", ""))[0])}</i>'
             '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
             '<span class="sp"></span><span>Built by <b>DECODIANS</b></span></div>', unsafe_allow_html=True)
         c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.75, 6.2, 1.15, 0.55, 1.95], vertical_alignment="center",
@@ -1271,7 +1338,7 @@ def header() -> None:
         with c_logo:
             st.markdown(wordmark(True, 44), unsafe_allow_html=True)
         with c_tabs, st.container(key="iw_tabs"):
-            tabs = [t for t in NAV if t[2] is None or role in t[2]]
+            tabs = visible_tabs(role)
             widths = [max(len(label), 6) + 5 for _p, label, _r in tabs]       # longer labels get wider pills, nothing truncates
             for i, (col, (page, label, _r)) in enumerate(zip(st.columns(widths), tabs)):
                 on = "on" if page == current else "off"
@@ -1300,8 +1367,11 @@ def header() -> None:
                     lbl = ("*current* " if is_me else "") + f"**{full_name(a['username'])}** {a['role']} · {ORG}"
                     if st.button(lbl, key=f"sw_{a['username']}", disabled=is_me, width="stretch"):
                         if switch_user(a["username"]):
-                            if role != st.session_state.get("role") and current == "pages/Insights.py":
-                                st.switch_page("Home.py")
+                            if not can_open(current, st.session_state.get("role", "")):
+                                try:
+                                    st.switch_page("Home.py")     # the new person does not work on this page
+                                except Exception:
+                                    pass
                             st.rerun()
                 with st.container(key="iw_signout"):
                     if st.button("Sign out", key="sign_out", width="stretch"):
@@ -1324,3 +1394,4 @@ def render_shell() -> None:
             pass
 
     header()
+    _workspace_guard()

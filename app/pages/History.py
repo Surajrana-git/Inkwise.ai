@@ -159,7 +159,7 @@ with left:
             b1, b2, _ = card.columns([1, 1, 2.4])
             b1.button("Open details", key=f"hs_open_{s['id']}", type="primary" if sel else "secondary",
                       width="stretch", on_click=ss.__setitem__, args=("hs_sel", s["id"]))
-            if s["status"] == "pending":
+            if s["status"] == "pending" and theme.can_open("pages/Approvals.py", ss.get("role", "")):
                 try:
                     b2.page_link("pages/Approvals.py", label="Go to Approvals", width="stretch")
                 except Exception:
