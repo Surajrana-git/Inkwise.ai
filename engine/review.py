@@ -264,12 +264,42 @@ def _exact_slice(span: str, text: str) -> Optional[str]:
     return None
 
 
+PER_CLAIM_K = 3          # sources retrieved for each sentence (claim)
+MAX_SOURCES = 18         # cap on the listing sent to the model
+
+
+def _claims(safe: str) -> list[str]:
+    """Sentences of the text, each treated as one claim for retrieval."""
+    from engine import rules
+    return [s for s in rules._sentences(safe) if len(s.split()) >= 3][:12]
+
+
 def _source_listing(kb, safe: str) -> tuple[dict[str, str], dict[str, object]]:
-    """Retrieve relevant sources and ensure G07 is included for claim checking."""
-    matches = list(kb.search(safe))
+    """Per-claim retrieval: the best sources for the whole text plus the best few for every sentence,
+    so a fact or guideline behind one sentence is not crowded out by the rest of a long draft.
+    The claims guideline G07 is always included."""
+    whole = list(kb.search(safe))
+    per_claim = [kb.search(claim, PER_CLAIM_K) for claim in _claims(safe)]
+    g07 = kb.get("G07")
+    room = MAX_SOURCES - (1 if g07 else 0)                 # G07 always fits inside the cap
+    matches, seen = [], set()
+
+    def add(m):
+        if m.source_id not in seen and len(matches) < room:
+            matches.append(m)
+            seen.add(m.source_id)
+
+    # round-robin: every sentence's best source first, then the second best, then the whole-text ranking,
+    # so no sentence in a long draft is left without its source
+    for rank in range(PER_CLAIM_K):
+        for hits in per_claim:
+            if rank < len(hits):
+                add(hits[rank])
+        if rank == 0:
+            for m in whole:
+                add(m)
 
     # Ensure the claim guideline G07 is available to the AI reviewer.
-    g07 = kb.get("G07")
     if g07 and all(match.source_id != "G07" for match in matches):
         matches.append(g07)
 
@@ -463,6 +493,7 @@ def review_text(
     rule_findings = (
         rules.check_terminology(text, kb.terms)
         + rules.check_expired_facts(text, kb.facts)
+        + rules.check_expiring_facts(text, kb.facts)
         + rules.check_readability(
             text,
             kb.get(rules.READABILITY_GUIDELINE),

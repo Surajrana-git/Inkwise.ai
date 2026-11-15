@@ -206,3 +206,14 @@ def test_renew_impact_lists_open_drafts_citing_the_fact():
     imp = wf.renew_impact("F01")
     assert [d["id"] for d in imp["drafts"]] == [cid] and imp["findings"] == 1
     assert wf.renew_impact("F02") == {"fact_id": "F02", "drafts": [], "findings": 0}
+
+
+def test_review_times_and_team_repeats_from_the_log():
+    from engine import seed
+    seed.seed_if_empty() if hasattr(seed, "seed_if_empty") else None
+    t = wf.review_times("2020-01-01", "2100-01-01")
+    if t["drafts"]:
+        assert t["check"] is not None and t["total"] >= t["signoff"] >= 0
+    rows = wf.repeat_issues("team", "2020-01-01", "2100-01-01")
+    assert all({"team", "category", "count", "creators", "repeat"} <= set(r) for r in rows)
+    assert wf.team_of("asha") == "Comms team" and wf.team_of("nobody") == "No team"

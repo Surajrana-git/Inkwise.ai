@@ -74,6 +74,29 @@ def transcribe_voice():
         ss.rv_voice_error = f"Could not transcribe ({type(e).__name__}). Try again or type instead."
 
 
+def import_document():
+    """Document upload -> text box (a callback, so it can set rv_text before the widget is drawn)."""
+    key = f"rv_doc_{ss.get('rv_doc_n', 0)}"
+    up = ss.get(key)
+    if up is None:
+        return
+    try:
+        out = services.extract_document(up.getvalue(), up.name)
+    except InputError as e:
+        ss.rv_doc_msg = ("warn", str(e))
+    else:
+        ss.rv_text = out["text"]
+        if not ss.get("rv_title"):
+            ss.rv_title = Path(up.name).stem.replace("_", " ").replace("-", " ")[:60]
+        where = f"{out['pages']} page{'s' if out['pages'] != 1 else ''} · " if up.name.lower().endswith(".pdf") else ""
+        ss.rv_doc_msg = ("ok", f"Imported {up.name} ({where}{len(out['text'].split())} words). "
+                               + (f"It had {out['chars']:,} characters; the first 12,000 were imported. "
+                                  if out["truncated"] else "")
+                               + "Check the text, then run the check.")
+        ss.rv_findings = None
+    ss.rv_doc_n = ss.get("rv_doc_n", 0) + 1          # a fresh, empty uploader next time
+
+
 SAMPLE_BANNER = Path(__file__).resolve().parents[1] / "assets" / "sample_banner.png"
 
 
@@ -130,6 +153,14 @@ def render_row(f):
         if f["source_text"]:
             st.markdown(rh.quote_html(f["source_text"], f["source_id"], owner, rh.evidence_terms(f)),
                         unsafe_allow_html=True)
+            sid = str(f["source_id"])
+            if len(sid) == 3 and sid[0] in "GFTV":           # one click to the full source in the brand kit
+                if st.button(f"Open {sid} in Brand Kit ↗", key=f"src_{fid}", type="tertiary"):
+                    ss.kb_focus = sid
+                    try:
+                        st.switch_page("pages/Knowledge_Base.py")
+                    except Exception:
+                        pass
         else:
             theme.source_quote(f["source_text"], f["source_id"], owner)
         if f["suggested_fix"] and not editing:
@@ -225,6 +256,14 @@ with left, st.container(key="rv_draft"):
     t1, t2 = st.columns([1.6, 1])
     t1.text_input("Campaign title", key="rv_title", placeholder="e.g. Diwali launch post")
     t2.selectbox("Channel", ["Social post", "Email", "Push notification", "Web page", "Paid ad"], key="rv_channel")
+    with st.popover("📄  Import from a PDF, Word or text file", width="stretch"):
+        st.file_uploader("Document", type=["pdf", "docx", "txt", "md"], key=f"rv_doc_{ss.get('rv_doc_n', 0)}",
+                         on_change=import_document, label_visibility="collapsed",
+                         help="The text is put in the box below, where you can edit it before the check.")
+        st.caption("PDF, Word (.docx), .txt or .md, up to 5 MB. Only the first 12,000 characters are checked.")
+    if ss.get("rv_doc_msg"):
+        kind, msg = ss.pop("rv_doc_msg")
+        (st.success if kind == "ok" else st.warning)(msg)
     st.text_area("Copy to check", key="rv_text", height=230,
                  placeholder="Paste the copy you want to publish, or pick a sample draft above.")
     txt = ss.get("rv_text") or ""
@@ -308,8 +347,9 @@ with right, st.container(key="rv_results"):
         else:
             MUST = ("claim", "outdated_fact", "terminology")
             is_open = [f for f in findings if f["status"] == "open"]
-            must = sum(f["category"] in MUST for f in findings)
-            must_left = sum(f["category"] in MUST for f in is_open)
+            is_must = lambda f: f["category"] in MUST and f.get("freshness") != "expiring_soon"   # advice, not an error
+            must = sum(is_must(f) for f in findings)
+            must_left = sum(is_must(f) for f in is_open)
             sugg_left = len(is_open) - must_left
             unver = sum(f["source_id"] == "UNVERIFIED" for f in findings)
             unver_left = sum(f["source_id"] == "UNVERIFIED" for f in is_open)

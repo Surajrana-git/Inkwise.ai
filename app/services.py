@@ -31,7 +31,8 @@ REVIEW_CACHE_SIZE = 200
 WORKFLOW_FUNCS = ["submit_for_approval", "list_submissions", "decide_submission",
                   "get_recent_activity", "get_dashboard_stats"]
 R3_FUNCS = ["authenticate", "demo_accounts", "fact_register", "fact_owners", "can_renew", "renew_fact",
-            "guideline_stats", "repeat_issues", "suggest_rewording", "accept_rewording", "global_audit", "health"]
+            "guideline_stats", "repeat_issues", "suggest_rewording", "accept_rewording", "global_audit", "health",
+            "review_times"]
 
 _PARTS = {
     "review": ("AI review engine", "engine/review.py with review_text(text)", "Riyana, Steps 4 and 8"),
@@ -277,6 +278,61 @@ def _demo_reviews() -> dict:
     return _demo
 
 
+MAX_DOC_BYTES = 5 * 1024 * 1024
+
+
+def extract_document(data: bytes, filename: str) -> dict:
+    """Text from an uploaded PDF, Word (.docx) or text file, ready for the Review box.
+
+    Returns {"text", "pages", "truncated", "chars"}; raises InputError with a plain message for files we
+    cannot read (scanned PDFs without text, old .doc files, encrypted PDFs, empty files)."""
+    name = (filename or "").lower()
+    if not data:
+        raise InputError("That file is empty.")
+    if len(data) > MAX_DOC_BYTES:
+        raise InputError(f"That file is {len(data) / 1e6:.1f} MB; the limit is 5 MB.")
+    pages = 1
+    try:
+        if name.endswith(".pdf") or data[:4] == b"%PDF":
+            import pymupdf
+            with pymupdf.open(stream=data, filetype="pdf") as doc:
+                if doc.needs_pass:
+                    raise InputError("That PDF is password-protected. Remove the password and try again.")
+                pages = doc.page_count
+                text = "\n\n".join(p.get_text("text").strip() for p in doc)
+        elif name.endswith(".docx"):
+            import io
+            import docx
+            d = docx.Document(io.BytesIO(data))
+            parts = [p.text for p in d.paragraphs if p.text.strip()]
+            for table in d.tables:
+                for row in table.rows:
+                    parts.append(" | ".join(c.text.strip() for c in row.cells if c.text.strip()))
+            text = "\n\n".join(parts)
+        elif name.endswith((".txt", ".md")):
+            text = data.decode("utf-8", errors="replace")
+        elif name.endswith(".doc"):
+            raise InputError("Old Word .doc files are not supported. Save it as .docx or PDF and try again.")
+        else:
+            raise InputError("Upload a PDF, Word (.docx) or text file.")
+    except InputError:
+        raise
+    except Exception as e:
+        raise InputError(f"Could not read that file ({type(e).__name__}). Try saving it again as PDF or .docx.")
+    import re as _re
+    text = _re.sub(r"[ \t]+\n", "\n", text.replace("\r\n", "\n"))
+    text = _re.sub(r"\n{3,}", "\n\n", text).strip()
+    if not text:
+        raise InputError("No text found in that file. If it is a scanned PDF, copy the text in by hand "
+                         "(scanned images are not read yet).")
+    chars = len(text)
+    truncated = chars > MAX_REVIEW_CHARS
+    if truncated:
+        cut = text[:MAX_REVIEW_CHARS]
+        text = cut[:cut.rfind(" ")] if " " in cut[-200:] else cut
+    return {"text": text, "pages": pages, "truncated": truncated, "chars": chars}
+
+
 def validate_text(text: str) -> str:
     text = (text or "").replace("\r\n", "\n")
     if not text.strip():
@@ -516,6 +572,10 @@ def renew_fact(fact_id: str, user: str, role: str, new_expires_on, note: str = "
 
 def guideline_stats(date_from=None, date_to=None, role: str | None = None) -> list[dict]:
     return [_plain(g) for g in _wf().guideline_stats(date_from, date_to, role or None)]
+
+
+def review_times(date_from=None, date_to=None) -> dict:
+    return _plain(_wf().review_times(date_from, date_to))
 
 
 def repeat_issues(group_by: str = "category", date_from=None, date_to=None) -> list[dict]:

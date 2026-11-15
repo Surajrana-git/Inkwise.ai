@@ -43,7 +43,7 @@ if isinstance(rng, (tuple, list)) and len(rng) == 2:
 else:
     d_from, d_to = today - dt.timedelta(days=30), today
 role_pick = f2.selectbox("Decisions by", ["Everyone", "Creator", "Manager", "Reviewer", "Admin"])
-group_pick = f3.selectbox("Repeat issues by", ["Category", "Creator"])
+group_pick = f3.selectbox("Repeat issues by", ["Category", "Creator", "Team"])
 role_arg = None if role_pick == "Everyone" else role_pick.lower()
 
 try:
@@ -63,8 +63,32 @@ theme.metric_row([
     (len(stats), "Guidelines with findings", ""),
     (decided, "Decisions in range", ""),
     (len(unclear), "Likely unclear", "warn" if unclear else "ok"),
-    (sum(1 for r in repeats if r.get("repeat")) if group_pick == "Creator" else len(repeats), "Repeat issues", ""),
+    (sum(1 for r in repeats if r.get("repeat")) if group_pick != "Category" else len(repeats), "Repeat issues", ""),
 ])
+
+# ---------------------------------------------------------------- review time (from the audit log)
+try:
+    times = services.review_times(d_from.isoformat(), d_to.isoformat())
+except Exception:
+    times = {}
+
+
+def _dur(m):
+    if m is None:
+        return "–"
+    return f"{m:.0f} min" if m < 60 else f"{m / 60:.1f} h" if m < 48 * 60 else f"{m / 1440:.1f} days"
+
+
+if times.get("drafts"):
+    st.markdown('<div class="iw-section">How long reviews take</div>', unsafe_allow_html=True)
+    theme.stat_cards([
+        (_dur(times["check"]), "Inkwise check", "⚡", "#E8F6F2", "#0B5E52"),
+        (_dur(times["creator"]), "Creator decides on findings", "✎", "#E8EEFB", "#1A4FB0"),
+        (_dur(times["signoff"]), "Waiting for manager sign-off", "⧗", "#FFF4E0", "#8A4B06"),
+        (_dur(times["total"]), "End to end, draft to decision", "◷", "#F3E9FB", "#6B2FA3"),
+    ])
+    st.caption(f"Medians over {times['drafts']} decided draft(s) in this range, measured from the audit log. "
+               "The longest wait is usually sign-off, which is where a clearer guideline saves the most time.")
 
 # ---------------------------------------------------------------- charts
 st.markdown('<div class="iw-section">Override and reject rate per guideline</div>', unsafe_allow_html=True)
@@ -104,9 +128,16 @@ elif group_pick == "Category":
                        yaxis=dict(categoryorder="total ascending"))
     st.plotly_chart(figc, config={"displayModeBar": False})
     st.caption("Hover a bar to see how many different creators raised that category.")
+elif group_pick == "Team":
+    st.caption(f"A team that gets the same category {th['repeat_min']} or more times in the range is marked as a "
+               "repeat: a sign the team needs a clearer guideline or a short briefing.")
+    dft = pd.DataFrame([{"Team": r["team"], "Category": r["category"].replace("_", " ").title(),
+                         "Findings": r["count"], "Creators": r["creators"], "Repeat": "Yes" if r["repeat"] else ""}
+                        for r in repeats])
+    st.dataframe(dft, hide_index=True, width="stretch")
 else:
     st.caption(f"A creator who gets the same category {th['repeat_min']} or more times in the range is marked as a repeat.")
-    dfr = pd.DataFrame([{"Creator": r["creator"], "Category": r["category"].replace("_", " ").title(),
+    dfr = pd.DataFrame([{"Creator": theme.full_name(r["creator"]), "Category": r["category"].replace("_", " ").title(),
                          "Findings": r["count"], "Repeat": "Yes" if r["repeat"] else ""} for r in repeats])
     st.dataframe(dfr, hide_index=True, width="stretch")
 

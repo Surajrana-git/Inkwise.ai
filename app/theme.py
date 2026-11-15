@@ -775,7 +775,9 @@ SHELL_CSS = f"""
 .iw-wordmark img {{ border-radius:8px; }}
 .iw-wordmark span {{ font-weight:700; letter-spacing:-.02em; }}
 .iw-wordmark em {{ font-style:normal; color:#12917F; }}
-.st-key-iw_header .iw-wordmark span {{ font-size:1.15rem; }}
+.st-key-iw_header .iw-wordmark {{ gap:12px; }}
+.st-key-iw_header .iw-wordmark span {{ font-size:1.6rem; letter-spacing:-.025em; }}
+.st-key-iw_header .iw-wordmark img {{ border-radius:11px; box-shadow:0 4px 14px rgba(0,0,0,.25); }}
 .iw-status {{ display:inline-flex; align-items:center; gap:6px; font-size:.72rem; font-weight:600; padding:4px 10px;
   border-radius:999px; white-space:nowrap; }}
 .iw-status i {{ width:7px; height:7px; border-radius:50%; display:inline-block; }}
@@ -1070,9 +1072,9 @@ def header() -> None:
             '<i class="pill mint">CodeTitans India 2026</i><span>Round 3 · The Finish</span>'
             '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
             '<span class="sp"></span><span>Built by <b>Team DECODIANS</b></span></div>', unsafe_allow_html=True)
-        c_logo, c_tabs, c_status, c_user = st.columns([1.45, 6.6, 1.05, 2.1], vertical_alignment="center", gap="small")
+        c_logo, c_tabs, c_status, c_user = st.columns([1.9, 6.3, 1.05, 2.0], vertical_alignment="center", gap="small")
         with c_logo:
-            st.markdown(wordmark(True, 30), unsafe_allow_html=True)
+            st.markdown(wordmark(True, 44), unsafe_allow_html=True)
         with c_tabs, st.container(key="iw_tabs"):
             tabs = [t for t in NAV if t[2] is None or role in t[2]]
             for col, (page, label, _r) in zip(st.columns(len(tabs)), tabs):

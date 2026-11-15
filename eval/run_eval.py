@@ -65,7 +65,8 @@ def evaluate(samples: list[dict], use_ai: bool, sleep: float) -> dict:
                 ai_ok += 1
             else:
                 ai_errors[result.ai_error or "no model answered"] += 1
-        findings = [{"span": f.span, "source_id": f.source_id} for f in result.findings]
+        findings = [{"span": f.span, "source_id": f.source_id} for f in result.findings
+                    if getattr(f, "freshness", "") != "expiring_soon"]   # advice about a still-valid fact, not an error
         errors = s.get("errors", [])
         pairs = match(findings, errors)
         n_find += len(findings)

@@ -28,7 +28,7 @@ MAX_GRADE = 10.0
 MIN_WORDS = 20
 MAX_SENTENCE_WORDS = 25
 
-_SENTENCE = re.compile(r"[^.!?\n]+[.!?]?")
+_SENTENCE = re.compile(r"(?:[^.!?\n]|(?<=\d)\.(?=\d))+[.!?]*")   # "2.1M" / "4.8" are not sentence ends
 
 _STOP = set(
     "a an the and or of to in on for with is are be by as at it this that "
@@ -151,22 +151,63 @@ def _normalize_number(value: str) -> str:
         return cleaned
 
 
-def _numbers(text: str) -> set[str]:
-    """Extract and normalize numbers from text."""
-    pattern = re.compile(
-        r"\b\d[\d,]*(?:\.\d+)?\s*(?:million|billion|mn|m|k)?\b",
-        re.I,
-    )
+_SCALE = {"thousand": 1e3, "k": 1e3, "lakh": 1e5, "lakhs": 1e5, "lac": 1e5, "lacs": 1e5,
+          "million": 1e6, "mn": 1e6, "m": 1e6, "crore": 1e7, "crores": 1e7, "cr": 1e7,
+          "billion": 1e9, "bn": 1e9, "b": 1e9}
+_WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
+            "ten": 10, "eleven": 11, "twelve": 12, "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40,
+            "fifty": 50, "hundred": 100}
+_NUM_RE = re.compile(
+    r"(?<![\w.])(\d[\d,]*(?:\.\d+)?|" + "|".join(sorted(_WORDNUM, key=len, reverse=True)) + r")"
+    r"(?:\s*(%|per\s?cent\b|percent\b|" + "|".join(sorted(_SCALE, key=len, reverse=True)) + r")\b)?",
+    re.I)
 
-    return {
-        _normalize_number(match.group())
-        for match in pattern.finditer(text)
-    }
+
+def _number_values(text: str) -> list[tuple[float, bool]]:
+    """Numbers in text as (value, is_percent): 2M = 2 million = 20 lakh = 2,000,000; 2 crore = 20 million;
+    "two million" = 2 million; 40% = 40 percent = 40 per cent. Years (1900-2100 without a unit) are skipped."""
+    out = []
+    for m in _NUM_RE.finditer(text):
+        raw, unit = m.group(1).lower(), (m.group(2) or "").lower().replace(" ", "")
+        try:
+            v = float(_WORDNUM[raw]) if raw in _WORDNUM else float(raw.replace(",", ""))
+        except ValueError:
+            continue
+        pct = unit in ("%", "percent", "percent", "percent") or unit.startswith("per")
+        if not pct and unit:
+            v *= _SCALE.get(unit, 1)
+        if not unit and raw.isdigit() and 1900 <= v <= 2100 and len(raw) == 4:
+            continue                                  # "Q1 2026", "in 2026": a date, not a figure
+        out.append((v, pct))
+    return out
+
+
+def _same_figure(fact: tuple[float, bool], said: tuple[float, bool]) -> bool:
+    """Exact for small counts and ratings; within 10% for big figures, so rounded or restated numbers
+    ("over 2 million", "2.1M", "20 lakh") still match the approved one."""
+    (fv, fp), (sv, sp) = fact, said
+    if fp != sp:
+        return False
+    if fv >= 1000:
+        return abs(sv - fv) <= 0.10 * fv
+    return abs(sv - fv) < 1e-9
+
+
+def _numbers(text: str) -> set[str]:
+    """Normalized numbers in text (kept for callers that compare sets of strings)."""
+    return {(f"{v:g}%" if p else f"{v:g}") for v, p in _number_values(text)}
+
+
+def _numbers_match(fact_text: str, sentence: str) -> bool:
+    """Every figure in the fact appears in the sentence, allowing the units and rounding above."""
+    fact_vals = _number_values(fact_text)
+    said = _number_values(sentence)
+    return bool(fact_vals) and all(any(_same_figure(f, x) for x in said) for f in fact_vals)
 
 
 def _fact_content_words(text: str) -> set[str]:
     """Extract meaningful fact words, excluding numbers and number scales."""
-    number_words = {"million", "billion", "mn", "m", "k"}
+    number_words = set(_SCALE) | set(_WORDNUM) | {"percent", "per", "cent"}
 
     return {
         word
@@ -175,80 +216,69 @@ def _fact_content_words(text: str) -> set[str]:
     }
 
 
+EXPIRING_DAYS = 30          # a fact expiring within this many days gets an advisory finding
+
+
+def _best_fact(sentence: str, facts: list[Fact]):
+    """The fact a sentence repeats: all its figures present (any unit / rounding) and enough shared words."""
+    sentence_words = _fact_content_words(sentence)
+    best, best_ratio = None, 0.0
+    for fact in facts:
+        fact_words = _fact_content_words(fact.statement)
+        overlap = len(sentence_words & fact_words)
+        ratio = overlap / len(fact_words) if fact_words else 0.0
+        if _numbers_match(fact.statement, sentence) and overlap >= 1 and ratio >= 0.25 and ratio > best_ratio:
+            best, best_ratio = fact, ratio
+    return best
+
+
 def check_expired_facts(
     text: str,
     facts: list[Fact],
     today: Optional[date] = None,
 ) -> list[Finding]:
-    """Flag text that repeats a fact whose expires_on date has passed.
+    """Flag every sentence that repeats a fact whose expires_on date has passed.
 
-    A sentence repeats an expired fact when:
-    - The fact's numbers are present in the sentence.
-    - It shares meaningful content words with the fact.
-    - It covers at least 25% of the fact's meaningful content words.
+    A sentence repeats a fact when all of the fact's figures are in it (2M = 2 million = 20 lakh,
+    40% = 40 percent, rounded big figures within 10%) and it shares at least 25% of the fact's content words.
     """
     expired = [fact for fact in facts if fact.is_expired(today)]
     out: list[Finding] = []
-
     for sentence in _sentences(text):
-        sentence_words = _fact_content_words(sentence)
-        sentence_numbers = _numbers(sentence)
-
-        best = None
-        best_ratio = 0.0
-
-        for fact in expired:
-            fact_words = _fact_content_words(fact.statement)
-
-            overlap = len(sentence_words & fact_words)
-
-            ratio = (
-                overlap / len(fact_words)
-                if fact_words
-                else 0.0
-            )
-
-            fact_numbers = _numbers(fact.statement)
-
-            if (
-                fact_numbers
-                and fact_numbers <= sentence_numbers
-                and overlap >= 1
-                and ratio >= 0.25
-                and ratio > best_ratio
-            ):
-                best = fact
-                best_ratio = ratio
-
+        best = _best_fact(sentence, expired)
         if best:
-            out.append(
-                Finding(
-                    id="",
-                    category=Category.OUTDATED_FACT,
-                    span=sentence,
-                    source_id=best.id,
-                    source_text=(
-                        f"{best.statement} "
-                        f"(expired {best.expires_on.isoformat()}; "
-                        f"owner: {best.owner})"
-                    ),
-                    why=(
-                        f"This repeats fact {best.id}, which expired on "
-                        f"{best.expires_on.isoformat()}."
-                    ),
-                    suggested_fix=(
-                        f"Remove this claim, or ask {best.owner} for the "
-                        "current figure before using it."
-                    ),
-                    confidence=0.9,
-                    checked_by=CheckedBy.RULE,
-                    evidence=best.statement,
-                    evidence_verified=True,
-                    fact_owner=best.owner,
-                    freshness="expired",
-                )
-            )
+            out.append(Finding(
+                id="", category=Category.OUTDATED_FACT, span=sentence, source_id=best.id,
+                source_text=f"{best.statement} (expired {best.expires_on.isoformat()}; owner: {best.owner})",
+                why=f"This repeats fact {best.id}, which expired on {best.expires_on.isoformat()}.",
+                suggested_fix=f"Remove this claim, or ask {best.owner} for the current figure before using it.",
+                confidence=0.9, checked_by=CheckedBy.RULE, evidence=best.statement, evidence_verified=True,
+                fact_owner=best.owner, freshness="expired"))
+    return out
 
+
+def check_expiring_facts(
+    text: str,
+    facts: list[Fact],
+    today: Optional[date] = None,
+    days: int = EXPIRING_DAYS,
+) -> list[Finding]:
+    """Advisory: the text repeats a fact that is still valid but expires within `days` days."""
+    today = today or date.today()
+    soon = [f for f in facts if f.expires_on and not f.is_expired(today) and (f.expires_on - today).days <= days]
+    out: list[Finding] = []
+    for sentence in _sentences(text):
+        best = _best_fact(sentence, soon)
+        if best:
+            left = (best.expires_on - today).days
+            out.append(Finding(
+                id="", category=Category.OUTDATED_FACT, span=sentence, source_id=best.id,
+                source_text=f"{best.statement} (expires {best.expires_on.isoformat()}; owner: {best.owner})",
+                why=(f"This repeats fact {best.id}. It is still valid, but it expires in {left} day"
+                     f"{'s' if left != 1 else ''} ({best.expires_on.isoformat()})."),
+                suggested_fix=f"Keep it if the campaign ends before then; otherwise ask {best.owner} to re-verify it.",
+                confidence=0.7, checked_by=CheckedBy.RULE, evidence=best.statement, evidence_verified=True,
+                fact_owner=best.owner, freshness="expiring_soon"))
     return out
 
 
