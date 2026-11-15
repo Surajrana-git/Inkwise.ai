@@ -121,6 +121,17 @@ streamlit run app/Home.py
 pytest                                 # 194 tests
 ```
 
+## AI assistance
+
+We used AI tools while building Inkwise, and we say so openly:
+
+- **Claude (Anthropic)** and **Google Antigravity** helped us write, test and review code and documentation. Every
+  member reviewed and understands the code they committed.
+- **Google Gemini** is the model inside the product: it reviews copy, reads the text and logo in campaign images, and
+  drafts clearer guideline wording. Personal data is masked before every call.
+
+Full details, including models, data sources and libraries: [docs/disclosures.md](docs/disclosures.md).
+
 ## Documentation
 
 | Document | What it covers |
