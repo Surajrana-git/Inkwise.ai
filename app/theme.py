@@ -1087,9 +1087,25 @@ JOURNEY_CSS = """<style>
 def journey() -> None:
     """End-to-end story for judges: five steps, each switches to the right person and opens the right page."""
     ss = st.session_state
-    if ss.get("journey_hidden"):
-        st.button("Show the 3-minute end-to-end story", key="j_show",
-                  on_click=ss.__setitem__, args=("journey_hidden", False))
+    if ss.get("journey_hidden", True):                 # hidden until someone asks for it
+        st.markdown("""<style>
+.st-key-iw_journey_closed { background:linear-gradient(90deg, #13284A, #1B2A4E); border-radius:14px; padding:10px 12px 10px 18px;
+  box-shadow:0 6px 18px rgba(13,26,49,.12); margin-bottom:6px; }
+.st-key-iw_journey_closed [data-testid="stHorizontalBlock"] { align-items:center; }
+.iw-jc { display:flex; align-items:center; gap:12px; color:#C9D6EA; font-size:.86rem; }
+.iw-jc i { font-style:normal; width:30px; height:30px; border-radius:50%; background:rgba(63,208,182,.16); color:#7FE6D2;
+  display:flex; align-items:center; justify-content:center; font-size:.9rem; flex:none; }
+.iw-jc b { color:#fff; font-weight:650; }
+.st-key-j_show button { background:#3FD0B6 !important; border:none !important; border-radius:999px !important; min-height:36px; }
+.st-key-j_show button p { color:#0D1A31 !important; font-weight:700 !important; font-size:.84rem !important; }
+.st-key-j_show button:hover { background:#7FE6D2 !important; }
+</style>""", unsafe_allow_html=True)
+        with st.container(key="iw_journey_closed"):
+            c1, c2 = st.columns([5, 1.3])
+            c1.markdown('<div class="iw-jc"><i>▶</i><span><b>New here?</b> Follow the 3-minute end-to-end story: five '
+                        'steps, each as the right person.</span></div>', unsafe_allow_html=True)
+            c2.button("Show the story", key="j_show", width="stretch",
+                      on_click=ss.__setitem__, args=("journey_hidden", False))
         return
     st.markdown(JOURNEY_CSS, unsafe_allow_html=True)
     with st.container(key="iw_journey"):
