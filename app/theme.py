@@ -550,8 +550,12 @@ def switch_user(username: str) -> bool:
     return False
 
 
+BOOT_CSS = ".stApp { background: #0E1730 !important; }"   # navy under the splash and sign-in, kept in <head>
+
+
 def login_screen() -> None:
-    persist_css({"iw-global": _style_text(CSS), "iw-shell": None})
+    # keep a navy background in <head> so nothing light shows between the splash and this page
+    persist_css({"iw-global": _style_text(CSS), "iw-shell": None, "iw-boot": BOOT_CSS})
     bg_choice = st.query_params.get("bg", "")
     st.markdown(LOGIN_CSS.replace("__LOGIN_BG__", _login_bg(bg_choice)), unsafe_allow_html=True)
     if st.query_params.get("card", "") == "glass":
@@ -987,7 +991,7 @@ def header() -> None:
     shell = (SHELL_CSS.replace("__INNER_BG__", inner_bg)
              + f"<style>.st-key-iw_user {{ --iw-initials:'{initials}'; }}</style>")
     st.markdown(shell, unsafe_allow_html=True)
-    persist_css({"iw-global": _style_text(CSS), "iw-shell": _style_text(shell)})
+    persist_css({"iw-global": _style_text(CSS), "iw-shell": _style_text(shell), "iw-boot": None})
     with st.container(key="iw_header"):
         c_logo, c_tabs, c_status, c_user = st.columns([1.45, 6.6, 1.05, 2.1], vertical_alignment="center", gap="small")
         with c_logo:
