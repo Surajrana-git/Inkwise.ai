@@ -710,13 +710,13 @@ DEMO_VIDEO = APP_DIR / "assets" / "demo.mp4"
 
 
 def demo_video(caption: bool = True) -> bool:
-    """The 2-minute walkthrough recorded from the real app. False when the file is missing."""
+    """The 2½-minute walkthrough recorded from the real app. False when the file is missing."""
     if not DEMO_VIDEO.exists():
         return False
     st.video(str(DEMO_VIDEO))
     if caption:
         st.caption("One draft from first check to sign-off: Asha checks and sends it, Meera approves it, "
-                   "Ravi renews an expired fact. No sound; captions on screen.")
+                   "Ravi renews an expired fact. Voice-over and captions.")
     return True
 
 
@@ -772,7 +772,7 @@ def welcome() -> None:
                 st.markdown('<div class="iw-wel-side">Every page has <b>Help</b> in the tabs, and the bell shows '
                             'what needs you.</div>', unsafe_allow_html=True)
             else:
-                st.caption("2-minute demo · no sound")
+                st.caption("2½-minute demo with voice-over")
 
 
 def can_open(page: str, role: str) -> bool:

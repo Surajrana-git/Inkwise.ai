@@ -203,7 +203,7 @@ st.markdown('<div class="hc-hero"><div class="eb">SUPPORT</div><h1>Help Centre</
             '<i style="background:#FFF4E0">💡</i></div></div>', unsafe_allow_html=True)
 if theme.DEMO_VIDEO.exists():
     with st.container(key="hc_video"):
-        st.markdown('<div class="hc-h" style="margin-top:0"><b>Watch the 2-minute demo</b>'
+        st.markdown('<div class="hc-h" style="margin-top:0"><b>Watch the 2½-minute demo</b>'
                     '<small>one draft from first check to sign-off, recorded from this app</small></div>',
                     unsafe_allow_html=True)
         v1, _ = st.columns([2, 1])
