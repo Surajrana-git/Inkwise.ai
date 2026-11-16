@@ -564,3 +564,12 @@ def test_first_visit_shows_a_plain_welcome_that_can_be_hidden(who, line):
     assert line in _all_md(at) and "wel_go" in [b.key for b in at.button]
     at.button(key="wel_hide").click().run()
     assert line not in _all_md(at)
+
+
+def test_each_person_has_their_own_demo_video_and_help_has_all():
+    import theme
+    for role in ("Creator", "Manager", "Admin"):
+        assert theme.ROLE_VIDEO[role].exists()
+    assert len({theme.ROLE_VIDEO[r] for r in ("Creator", "Manager", "Admin")}) == 3
+    at = run("app/pages/Help.py", ASHA)
+    assert "The whole journey" in _all_md(at) and len(at.get("video")) == 4

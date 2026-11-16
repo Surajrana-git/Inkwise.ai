@@ -32,7 +32,7 @@ said the app was hard to understand at the start. The two concrete problems had 
 | The image box had no label | "Drop a PNG or JPG image here, or browse", next to "Use sample banner" |
 | The Review page did not say what to do in what order | **Three numbered steps**: 1 Your copy · 2 Campaign image (optional) · 3 Run the check |
 | Hard to know where to start | **A welcome card on each person's first Home**: who you are, what you do here in two sentences, and one button to start (Asha: "Check a sample draft", Meera: "Open the approval queue", Ravi: "Open the Fact Register") |
-| "A video or demo would help" | **A 2½-minute demo video** recorded from the real app, with a voice-over and captions: on every person's first Home, at the top of the Help Centre, and linked in the README |
+| "A video or demo would help" | **Demo videos recorded from the real app, with a voice-over and captions**: one short video per person (Creator, Manager, Admin) on that person's first Home, showing only their job, and the 2½-minute whole journey in the Help Centre and the README |
 | (Before the test) everyone saw every page | Each person already has their own workspace with only the tabs they need |
 
 New automated tests cover the numbered steps, the visible file boxes and the welcome card

@@ -707,10 +707,25 @@ WORKSPACE_PAGES = {
 
 
 DEMO_VIDEO = APP_DIR / "assets" / "demo.mp4"
+ROLE_VIDEO = {   # one short narrated demo per person, showing only that person's job
+    "Creator": APP_DIR / "assets" / "demo_creator.mp4",
+    "Manager": APP_DIR / "assets" / "demo_manager.mp4",
+    "Reviewer": APP_DIR / "assets" / "demo_manager.mp4",
+    "Admin": APP_DIR / "assets" / "demo_admin.mp4",
+}
+
+
+def role_video(role: str) -> bool:
+    """This person's own demo (about a minute, with voice-over). False when the file is missing."""
+    path = ROLE_VIDEO.get(role)
+    if not path or not path.exists():
+        return False
+    st.video(str(path))
+    return True
 
 
 def demo_video(caption: bool = True) -> bool:
-    """The 2½-minute walkthrough recorded from the real app. False when the file is missing."""
+    """The 2½-minute walkthrough of the whole journey, recorded from the real app. False when the file is missing."""
     if not DEMO_VIDEO.exists():
         return False
     st.video(str(DEMO_VIDEO))
@@ -768,11 +783,11 @@ def welcome() -> None:
                       help="A five-step walkthrough on Check a draft; each step signs you in as the right person")
             b3.button("Hide", key="wel_hide", on_click=hidden.add, args=(user,))
         with c2:
-            if not demo_video(caption=False):
+            if role_video(role):
+                st.caption("Your job in about a minute, with voice-over · the whole journey is in Help")
+            else:
                 st.markdown('<div class="iw-wel-side">Every page has <b>Help</b> in the tabs, and the bell shows '
                             'what needs you.</div>', unsafe_allow_html=True)
-            else:
-                st.caption("2½-minute demo with voice-over")
 
 
 def can_open(page: str, role: str) -> bool:

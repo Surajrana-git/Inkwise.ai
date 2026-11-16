@@ -203,12 +203,19 @@ st.markdown('<div class="hc-hero"><div class="eb">SUPPORT</div><h1>Help Centre</
             '<i style="background:#FFF4E0">💡</i></div></div>', unsafe_allow_html=True)
 if theme.DEMO_VIDEO.exists():
     with st.container(key="hc_video"):
-        st.markdown('<div class="hc-h" style="margin-top:0"><b>Watch the 2½-minute demo</b>'
-                    '<small>one draft from first check to sign-off, recorded from this app</small></div>',
-                    unsafe_allow_html=True)
-        v1, _ = st.columns([2, 1])
+        st.markdown('<div class="hc-h" style="margin-top:0"><b>Watch the demo</b>'
+                    '<small>recorded from this app, with voice-over</small></div>', unsafe_allow_html=True)
+        v1, v2 = st.columns([1.6, 1], gap="large")
         with v1:
-            theme.demo_video()
+            st.markdown("**The whole journey** · 2½ minutes: Asha checks and sends a draft, Meera approves it, "
+                        "Ravi renews a fact.")
+            theme.demo_video(caption=False)
+        with v2:
+            st.markdown("**One person at a time** · about a minute each")
+            for tab, role in zip(st.tabs(["Creator · Asha", "Manager · Meera", "Admin · Ravi"]),
+                                 ("Creator", "Manager", "Admin")):
+                with tab:
+                    theme.role_video(role)
 with st.container(key="hc_search"):
     q = st.text_input("Search help", key="hc_q", placeholder="Search for help, e.g. “expired”, “approve”, “image”, “AI”",
                       label_visibility="collapsed")

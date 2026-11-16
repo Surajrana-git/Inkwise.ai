@@ -12,7 +12,7 @@
 | SQLite on Streamlit Cloud's disk | Demo data resets when the app restarts | Demo data is re-seeded automatically on start |
 | One workspace and one brand kit per deployment | No multi-brand or agency setup yet | Brand kit is plain JSON, easy to swap |
 | Rule-based fact matching needs a figure | Facts without numbers (e.g. "support is available seven days a week") are left to the AI claim check | The AI is always shown the claims guideline and per-claim sources |
-| New users find the app hard to understand at first (all five testers said so) | Without the walkthrough, a first visit can feel complicated | Welcome card with one button to start, numbered steps, a 2½-minute demo video; not yet re-tested with the same people |
+| New users find the app hard to understand at first (all five testers said so) | Without the walkthrough, a first visit can feel complicated | Welcome card with one button to start, numbered steps, demo videos (one per person, plus the whole journey); not yet re-tested with the same people |
 
 ## Roadmap
 

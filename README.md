@@ -7,7 +7,7 @@ cites the exact source it relies on, or is marked **UNVERIFIED**. A person decid
 before anything counts as approved.
 
 **Live demo:** https://inkwiseai-jobnp9jkgfoutv5jeuvvs7.streamlit.app/  
-**2½-minute demo video:** [app/assets/demo.mp4](app/assets/demo.mp4) (also on every first Home and in the Help Centre)  
+**Demo videos (with voice-over):** [the whole journey, 2½ min](app/assets/demo.mp4) · one per person: [Creator](app/assets/demo_creator.mp4) · [Manager](app/assets/demo_manager.mp4) · [Admin](app/assets/demo_admin.mp4). Each person's first Home plays their own; the Help Centre has all four.  
 **DECODIANS** · CodeTitans India 2026 (title sponsor Inkloom) · Round 3: The Finish
 
 | Member | Role | What they built | Links |
@@ -40,7 +40,7 @@ Taken from the running app with the demo data. Every screen below is one click a
 
 | | |
 |---|---|
-| **Sign in:** pick a demo person, no password | **Creator studio:** a welcome card and the demo video on the first visit |
+| **Sign in:** pick a demo person, no password | **Creator studio:** a welcome card and Asha's own demo video on the first visit |
 | ![Sign in](docs/screenshots/sign-in.jpg) | ![Creator home](docs/screenshots/home-creator.jpg) |
 | **Check a draft:** three numbered steps; every finding highlighted, with its source, owner and expiry | **Image check:** the banner is checked with the copy; problems are boxed and numbered |
 | ![Check a draft](docs/screenshots/check-a-draft.jpg) | ![Image check](docs/screenshots/image-check.jpg) |
