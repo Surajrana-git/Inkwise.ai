@@ -40,9 +40,9 @@ Taken from the running app with the demo data. Every screen below is one click a
 
 | | |
 |---|---|
-| **Sign in:** pick a demo person, no password | **Creator studio:** Home says what needs you now |
+| **Sign in:** pick a demo person, no password | **Creator studio:** a welcome card and the demo video on the first visit |
 | ![Sign in](docs/screenshots/sign-in.jpg) | ![Creator home](docs/screenshots/home-creator.jpg) |
-| **Check a draft:** every finding highlighted, with its source, owner and expiry | **Image check:** the banner is checked with the copy; problems are boxed and numbered |
+| **Check a draft:** three numbered steps; every finding highlighted, with its source, owner and expiry | **Image check:** the banner is checked with the copy; problems are boxed and numbered |
 | ![Check a draft](docs/screenshots/check-a-draft.jpg) | ![Image check](docs/screenshots/image-check.jpg) |
 | **Approval queue:** readiness checks and tracked changes before sign-off | **Approval desk:** the Manager's Home |
 | ![Approval queue](docs/screenshots/approval-queue.jpg) | ![Manager home](docs/screenshots/home-manager.jpg) |
