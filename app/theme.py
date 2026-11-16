@@ -403,7 +403,7 @@ LOGIN_CSS = f"""
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
 [data-testid="stExpandSidebarButton"], header[data-testid="stHeader"] {{ display:none !important; }}
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap');
-.stApp {{ background: __LOGIN_BG__ !important; background-attachment: fixed !important; }}
+.stApp {{ background: __LOGIN_BG__ !important; }}
 .block-container {{ padding-top:0 !important; max-width:1120px !important; }}
 .iw-hero {{ color:#E8EEF8; margin-top:4vh; padding-right:12px; }}
 .iw-hero .eyebrow {{ font-size:.68rem; letter-spacing:.2em; font-weight:600; color:#C9D3E3; margin-bottom:18px; }}
@@ -715,20 +715,31 @@ ROLE_VIDEO = {   # one short narrated demo per person, showing only that person'
 }
 
 
-def role_video(role: str) -> bool:
-    """This person's own demo (about a minute, with voice-over). False when the file is missing."""
-    path = ROLE_VIDEO.get(role)
+def video_on_demand(path: Path, key: str, label: str) -> bool:
+    """A still picture and a play button; the video itself is sent only after the click, so opening a page never
+    downloads megabytes of video nobody asked for. False when the file is missing."""
     if not path or not path.exists():
         return False
-    st.video(str(path))
+    ss = st.session_state
+    if ss.get(key):
+        st.video(str(path), autoplay=True)
+    else:
+        thumb = path.with_suffix(".jpg")
+        if thumb.exists():
+            st.image(str(thumb), width="stretch")
+        st.button(f"▶  {label}", key=key + "_btn", width="stretch", on_click=ss.__setitem__, args=(key, True))
     return True
+
+
+def role_video(role: str) -> bool:
+    """This person's own demo (about a minute, with voice-over). False when the file is missing."""
+    return video_on_demand(ROLE_VIDEO.get(role), f"vid_{role.lower()}", "Watch my 1-minute demo")
 
 
 def demo_video(caption: bool = True) -> bool:
     """The 2½-minute walkthrough of the whole journey, recorded from the real app. False when the file is missing."""
-    if not DEMO_VIDEO.exists():
+    if not video_on_demand(DEMO_VIDEO, "vid_journey", "Watch the whole journey (2½ min)"):
         return False
-    st.video(str(DEMO_VIDEO))
     if caption:
         st.caption("One draft from first check to sign-off: Asha checks and sends it, Meera approves it, "
                    "Ravi renews an expired fact. Voice-over and captions.")
@@ -856,7 +867,7 @@ SHELL_CSS = f"""
 <style>
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"],
 [data-testid="stSidebarNav"], header[data-testid="stHeader"] {{ display:none !important; }}
-.stApp {{ background: __INNER_BG__ !important; background-attachment: fixed !important; }}
+.stApp {{ background: __INNER_BG__ !important; }}
 .block-container {{ padding:0 2.6rem 4rem !important; max-width:100% !important; }}
 /* hidden <style> blocks before the header still take a flex gap each: take them out of the flow */
 [data-testid="stVerticalBlock"] > div:has(~ div > .st-key-iw_header) {{ position:absolute !important; width:0 !important;
@@ -1496,11 +1507,10 @@ def header() -> None:
                     lbl = ("*current* " if is_me else "") + f"**{full_name(a['username'])}** {a['role']} · {ORG}"
                     if st.button(lbl, key=f"sw_{a['username']}", disabled=is_me, width="stretch"):
                         if switch_user(a["username"]):
-                            if not can_open(current, st.session_state.get("role", "")):
-                                try:
-                                    st.switch_page("Home.py")     # the new person does not work on this page
-                                except Exception:
-                                    pass
+                            try:
+                                st.switch_page("Home.py")     # always start on the new person's own Home
+                            except Exception:
+                                pass
                             st.rerun()
                 with st.container(key="iw_signout"):
                     if st.button("Sign out", key="sign_out", width="stretch"):

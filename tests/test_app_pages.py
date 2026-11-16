@@ -572,4 +572,12 @@ def test_each_person_has_their_own_demo_video_and_help_has_all():
         assert theme.ROLE_VIDEO[role].exists()
     assert len({theme.ROLE_VIDEO[r] for r in ("Creator", "Manager", "Admin")}) == 3
     at = run("app/pages/Help.py", ASHA)
-    assert "The whole journey" in _all_md(at) and len(at.get("video")) == 4
+    assert len(at.get("video")) == 0                       # nothing downloads until someone presses play
+    at.button(key="vid_journey_btn").click().run()
+    assert len(at.get("video")) == 1
+
+
+def test_switching_person_lands_on_their_home():
+    at = run("app/pages/Fact_Register.py", RAVI)
+    at.button(key="sw_asha").click().run()
+    assert at.session_state["user"] == "asha"

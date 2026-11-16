@@ -205,17 +205,18 @@ if theme.DEMO_VIDEO.exists():
     with st.container(key="hc_video"):
         st.markdown('<div class="hc-h" style="margin-top:0"><b>Watch the demo</b>'
                     '<small>recorded from this app, with voice-over</small></div>', unsafe_allow_html=True)
-        v1, v2 = st.columns([1.6, 1], gap="large")
+        which = st.segmented_control(
+            "Video", ["The whole journey · 2½ min", "Creator · Asha", "Manager · Meera", "Admin · Ravi"],
+            default="The whole journey · 2½ min", key="hc_vid", label_visibility="collapsed")
+        v1, _ = st.columns([1.6, 1])
         with v1:
-            st.markdown("**The whole journey** · 2½ minutes: Asha checks and sends a draft, Meera approves it, "
-                        "Ravi renews a fact.")
-            theme.demo_video(caption=False)
-        with v2:
-            st.markdown("**One person at a time** · about a minute each")
-            for tab, role in zip(st.tabs(["Creator · Asha", "Manager · Meera", "Admin · Ravi"]),
-                                 ("Creator", "Manager", "Admin")):
-                with tab:
-                    theme.role_video(role)
+            if not which or which.startswith("The whole"):
+                st.caption("Asha checks and sends a draft, Meera approves it, Ravi renews a fact.")
+                theme.demo_video(caption=False)
+            else:
+                role = {"Creator": "Creator", "Manager": "Manager", "Admin": "Admin"}[which.split(" ·")[0]]
+                st.caption(f"Only the {role.lower()}'s job, in about a minute.")
+                theme.role_video(role)
 with st.container(key="hc_search"):
     q = st.text_input("Search help", key="hc_q", placeholder="Search for help, e.g. “expired”, “approve”, “image”, “AI”",
                       label_visibility="collapsed")
