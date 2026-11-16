@@ -74,12 +74,38 @@ def transcribe_voice():
         ss.rv_voice_error = f"Could not transcribe ({type(e).__name__}). Try again or type instead."
 
 
+IMAGE_EXT = (".png", ".jpg", ".jpeg")
+DOC_EXT = (".pdf", ".docx", ".txt", ".md")
+ANY_FILE = ["pdf", "docx", "txt", "md", "png", "jpg", "jpeg"]
+
+
+def _take_file(up, dropped_in: str) -> None:
+    """Any file in either box goes where it belongs: an image to step 2, a document's text to step 1.
+    New users drop a PDF in the image box (or the other way round); nothing is refused for being in the wrong box."""
+    name = (up.name or "").lower()
+    if name.endswith(IMAGE_EXT):
+        ss.rv_img_bytes, ss.rv_img_name = up.getvalue(), up.name
+        if dropped_in == "copy":
+            ss.rv_doc_msg = ("ok", f"{up.name} is an image, so it was added as the campaign image in step 2.")
+    elif name.endswith(DOC_EXT):
+        _import_document(up)
+        if dropped_in == "image" and ss.get("rv_doc_msg", ("",))[0] == "ok":
+            ss.rv_doc_msg = ("ok", f"{up.name} is a document, so its text was put in step 1. " + ss.rv_doc_msg[1])
+    else:
+        ss.rv_doc_msg = ("warn", f"{up.name} is not a file Inkwise can read. Use a PDF, Word (.docx), .txt or .md "
+                                 "file for copy, or a PNG or JPG for the image.")
+    ss.rv_doc_n = ss.get("rv_doc_n", 0) + 1          # fresh, empty boxes next time
+    ss.rv_up_n = ss.get("rv_up_n", 0) + 1
+
+
 def import_document():
-    """Document upload -> text box (a callback, so it can set rv_text before the widget is drawn)."""
-    key = f"rv_doc_{ss.get('rv_doc_n', 0)}"
-    up = ss.get(key)
-    if up is None:
-        return
+    up = ss.get(f"rv_doc_{ss.get('rv_doc_n', 0)}")
+    if up is not None:
+        _take_file(up, "copy")
+
+
+def _import_document(up):
+    """Document -> text box (called from a callback, so it can set rv_text before the widget is drawn)."""
     try:
         out = services.extract_document(up.getvalue(), up.name)
     except InputError as e:
@@ -94,7 +120,6 @@ def import_document():
                                   if out["truncated"] else "")
                                + "Check the text, then run the check.")
         ss.rv_findings = None
-    ss.rv_doc_n = ss.get("rv_doc_n", 0) + 1          # a fresh, empty uploader next time
 
 
 SAMPLE_BANNER = Path(__file__).resolve().parents[1] / "assets" / "sample_banner.png"
@@ -103,7 +128,7 @@ SAMPLE_BANNER = Path(__file__).resolve().parents[1] / "assets" / "sample_banner.
 def image_uploaded():
     up = ss.get(f"rv_image_{ss.get('rv_up_n', 0)}")
     if up is not None:
-        ss.rv_img_bytes, ss.rv_img_name = up.getvalue(), up.name
+        _take_file(up, "image")
 
 
 def use_sample_banner():
@@ -210,6 +235,12 @@ st.markdown("""<style>
 .rv-chip { font-size:.7rem; font-weight:600; padding:3px 9px; border-radius:999px; background:#F3F5F9; color:#33415C; }
 .rv-chip.ok { background:#E8F6F2; color:#0B5E52; }
 .rv-count { text-align:right; font-size:.72rem; color:#8A93A6; margin:-6px 0 6px; }
+.rv-step { display:flex; align-items:baseline; gap:8px; margin:14px 0 6px; }
+.rv-step span { width:22px; height:22px; border-radius:50%; background:#12917F; color:#fff; font-size:.74rem; font-weight:700;
+  display:inline-flex; align-items:center; justify-content:center; flex:none; align-self:center; }
+.rv-step b { color:#1B2A4E; font-size:.92rem; } .rv-step small { color:#5A6480; font-size:.76rem; }
+[data-testid="stFileUploader"] label p { font-size:.8rem !important; color:#1B2A4E !important; font-weight:600 !important; }
+[data-testid="stFileUploaderDropzone"] { border:1.5px dashed #9FB4D6 !important; background:#FAFBFC !important; }
 .rv-bundle { border:1px dashed #CBD3E1; border-radius:12px; padding:10px 12px 4px; margin:6px 0 12px; background:#FAFBFC; }
 .rv-bundle .lbl { font-size:.66rem; letter-spacing:.14em; font-weight:700; color:#8A93A6; }
 .rv-bundle b { display:block; color:#1B2A4E; font-size:.86rem; margin:2px 0 0; }
@@ -256,24 +287,26 @@ with left, st.container(key="rv_draft"):
     t1, t2 = st.columns([1.6, 1])
     t1.text_input("Campaign title", key="rv_title", placeholder="e.g. Diwali launch post")
     t2.selectbox("Channel", ["Social post", "Email", "Push notification", "Web page", "Paid ad"], key="rv_channel")
-    with st.popover("📄  Import from a PDF, Word or text file", width="stretch"):
-        st.file_uploader("Document", type=["pdf", "docx", "txt", "md"], key=f"rv_doc_{ss.get('rv_doc_n', 0)}",
-                         on_change=import_document, label_visibility="collapsed",
-                         help="The text is put in the box below, where you can edit it before the check.")
-        st.caption("PDF, Word (.docx), .txt or .md, up to 5 MB. Only the first 12,000 characters are checked.")
+    st.markdown('<div class="rv-step"><span>1</span><b>Your copy</b><small>paste it, pick a sample above, or import a '
+                'file</small></div>', unsafe_allow_html=True)
     if ss.get("rv_doc_msg"):
         kind, msg = ss.pop("rv_doc_msg")
         (st.success if kind == "ok" else st.warning)(msg)
-    st.text_area("Copy to check", key="rv_text", height=230,
-                 placeholder="Paste the copy you want to publish, or pick a sample draft above.")
+    st.text_area("Copy to check", key="rv_text", height=200, label_visibility="collapsed",
+                 placeholder="Paste the copy you want to publish here.")
     txt = ss.get("rv_text") or ""
     st.markdown(f'<div class="rv-count">{len(txt.split())} words · {len(txt):,} / 12,000 characters</div>',
                 unsafe_allow_html=True)
     if voice_input is not None:
         st.audio_input("Dictate", key="rv_voice", on_change=transcribe_voice,
                        help="Tap the mic, speak, then stop. The text is added above and you can edit it.")
-    st.markdown('<div class="rv-bundle"><span class="lbl">ONE CAMPAIGN · TEXT AND IMAGE</span>'
-                '<b>Add the creative for this campaign (optional)</b></div>', unsafe_allow_html=True)
+    with st.container(key="rv_docbox"):
+        st.file_uploader("Or import a PDF, Word or text file (its text goes in the box above)", type=ANY_FILE,
+                         key=f"rv_doc_{ss.get('rv_doc_n', 0)}", on_change=import_document,
+                         help="PDF, Word (.docx), .txt or .md, up to 5 MB. Only the first 12,000 characters are "
+                              "checked. Dropped an image here by mistake? It is added in step 2.")
+    st.markdown('<div class="rv-step"><span>2</span><b>Campaign image</b><small>optional · a banner, poster or social '
+                'image</small></div>', unsafe_allow_html=True)
     if ss.get("rv_img_bytes"):
         c_img, c_meta = st.columns([1.3, 1])
         c_img.image(ss.rv_img_bytes, width="stretch")
@@ -283,14 +316,18 @@ with left, st.container(key="rv_draft"):
                         f'and the copy rules on any words in the image</div>', unsafe_allow_html=True)
         c_meta.button("Remove image", key="rv_img_rm", on_click=remove_image)
     else:
-        u1, u2 = st.columns([2.2, 1], vertical_alignment="center")
-        u1.file_uploader("Image", type=["png", "jpg", "jpeg"], key=f"rv_image_{ss.get('rv_up_n', 0)}",
-                         label_visibility="collapsed", on_change=image_uploaded,
-                         help="A poster, banner or social image, up to 5 MB.")
-        u2.button("Use sample banner", key="rv_img_sample", on_click=use_sample_banner, width="stretch")
+        u1, u2 = st.columns([2.2, 1], vertical_alignment="bottom")
+        u1.file_uploader("Drop a PNG or JPG image here, or browse", type=ANY_FILE,
+                         key=f"rv_image_{ss.get('rv_up_n', 0)}", on_change=image_uploaded,
+                         help="A poster, banner or social image, up to 5 MB. Dropped a PDF or Word file here? "
+                              "Its text goes in step 1.")
+        u2.button("Use sample banner", key="rv_img_sample", on_click=use_sample_banner, width="stretch",
+                  help="A ready-made Lumora banner with a few problems for the check to find")
     if ss.rv_voice_error:
         st.warning(ss.rv_voice_error)
     has_img = bool(ss.get("rv_img_bytes"))
+    st.markdown('<div class="rv-step"><span>3</span><b>Run the check</b><small>findings appear on the right</small>'
+                '</div>', unsafe_allow_html=True)
     label = "Run pre-publication check" + (" · copy + image" if has_img and txt.strip() else
                                            " · image only" if has_img else "")
     run = st.button(label, key="rv_run", type="primary", width="stretch",

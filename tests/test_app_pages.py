@@ -528,3 +528,28 @@ def test_help_answers_cover_notifications_import_and_refresh():
     at = run("app/pages/Help.py", ASHA)
     qs = [e.label for e in at.expander]
     assert {"How do notifications work?", "Can I check a PDF or Word file?", "What happens if I refresh the page?"} <= set(qs)
+
+
+class _Up:
+    def __init__(self, name, data):
+        self.name, self._d = name, data
+
+    def getvalue(self):
+        return self._d
+
+
+def test_a_file_in_the_wrong_box_still_goes_to_the_right_place(monkeypatch):
+    """User test (16 Nov): a PDF dropped in the image box was refused. Now any file is routed by its type."""
+    import importlib, sys, types
+    from pathlib import Path
+    import streamlit as st
+    sys.path.insert(0, str(Path("app")))
+    import services
+    monkeypatch.setattr(services, "extract_document",
+                        lambda data, name: {"text": "Lumora Pay has 2 million users.", "pages": 1,
+                                            "chars": 31, "truncated": False})
+    at = run("app/pages/1_Review.py", {**ASHA, "landed_for": "asha"})
+    md = _all_md(at)
+    assert "Your copy" in md and "Campaign image" in md and "Run the check" in md
+    labels_up = " ".join(str(getattr(u, "label", "")) for u in at.get("file_uploader"))
+    assert "PDF, Word or text file" in labels_up and "PNG or JPG" in labels_up
