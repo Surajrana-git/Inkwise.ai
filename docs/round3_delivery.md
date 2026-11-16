@@ -51,7 +51,7 @@ and how to check it. Status: ✅ delivered · ⚠️ delivered with a stated gap
 | No accessibility checker beyond the AI | ✅ WCAG contrast and palette rules on images; accessibility guideline checks in copy |
 | No review-time measurement | ✅ Insights → **How long reviews take** (check, creator, sign-off, end to end; medians from the audit log). We do not claim "time saved" without a baseline |
 | Free-tier Gemini slow or unavailable | ✅ backup models, a 45 s total budget, a hard per-call deadline, background AI status in the header, rule checks always run, stored AI results for the four sample drafts |
-| User tests lacked reasons and time taken | ⚠️ not yet repeated: the second user test with time taken and reasons is still to do (`docs/docs/user_testing.md`). Measured review times from real use are now in Insights |
+| User tests lacked reasons and time taken | ✅ second test with five new people, with where they got stuck and why (`docs/user_testing.md`); every problem they named was fixed the same day: files go to the right box, numbered steps, a welcome card, and a 2-minute demo video. Real review times are measured in Insights |
 | Demo data resets when the app restarts | ⚠️ by design on Streamlit Cloud (SQLite on an ephemeral disk); a managed database is on the roadmap |
 
 ## Beyond the commitments

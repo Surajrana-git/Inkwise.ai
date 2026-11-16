@@ -6,7 +6,8 @@ Inkwise checks campaign copy and creatives against a brand's guidelines, approve
 cites the exact source it relies on, or is marked **UNVERIFIED**. A person decides every change, and a manager signs off
 before anything counts as approved.
 
-**Live demo:** https://inkwiseai-jobnp9jkgfoutv5jeuvvs7.streamlit.app/
+**Live demo:** https://inkwiseai-jobnp9jkgfoutv5jeuvvs7.streamlit.app/  
+**2-minute demo video:** [app/assets/demo.mp4](app/assets/demo.mp4) (also on every first Home and in the Help Centre)  
 **DECODIANS** · CodeTitans India 2026 (title sponsor Inkloom) · Round 3: The Finish
 
 | Member | Role | What they built | Links |
@@ -165,4 +166,4 @@ Full details, including models, data sources and libraries: [docs/disclosures.md
 | [docs/limitations_and_roadmap.md](docs/limitations_and_roadmap.md) | Known limitations and the plan after the event |
 | [docs/clarity_thresholds.md](docs/clarity_thresholds.md) | Insights thresholds |
 | [docs/architecture.md](docs/architecture.md) · [docs/deploy.md](docs/deploy.md) · [docs/disclosures.md](docs/disclosures.md) | Design, deployment, APIs, models, data and AI-assisted development |
-| [docs/docs/user_testing.md](docs/docs/user_testing.md) | User testing |
+| [docs/user_testing.md](docs/user_testing.md) | User testing: five people, what they found, what we changed |

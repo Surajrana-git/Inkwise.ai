@@ -12,13 +12,13 @@
 | SQLite on Streamlit Cloud's disk | Demo data resets when the app restarts | Demo data is re-seeded automatically on start |
 | One workspace and one brand kit per deployment | No multi-brand or agency setup yet | Brand kit is plain JSON, easy to swap |
 | Rule-based fact matching needs a figure | Facts without numbers (e.g. "support is available seven days a week") are left to the AI claim check | The AI is always shown the claims guideline and per-claim sources |
-| Second user test (with time taken and reasons) not repeated yet | Usability evidence is from the first round | Review times from real use are measured in Insights |
+| New users find the app hard to understand at first (all five testers said so) | Without the walkthrough, a first visit can feel complicated | Welcome card with one button to start, numbered steps, a 2-minute demo video; not yet re-tested with the same people |
 
 ## Roadmap
 
 **Next (first month after the event)**
 - Steadier AI results: average several runs, tune the messaging and accessibility prompt on the dev set only, and cut the 6/25 false alarms on clean drafts.
-- Second user test with five people: time taken per task, where they hesitated, and why.
+- Re-test the five people after the changes, timing every task; then test with real marketing teams.
 - Company sign-in (Google / Microsoft) with the same roles; a managed Postgres database instead of SQLite.
 
 **Then**
