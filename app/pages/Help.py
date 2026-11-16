@@ -201,6 +201,14 @@ st.markdown('<div class="hc-hero"><div class="eb">SUPPORT</div><h1>Help Centre</
             '<p>Answers, step-by-step guides and how Inkwise works, so you can use every part of it on your own.</p>'
             '<div class="art"><i style="background:#fff">?</i><i style="background:#E8F6F2">✓</i>'
             '<i style="background:#FFF4E0">💡</i></div></div>', unsafe_allow_html=True)
+if theme.DEMO_VIDEO.exists():
+    with st.container(key="hc_video"):
+        st.markdown('<div class="hc-h" style="margin-top:0"><b>Watch the 90-second demo</b>'
+                    '<small>one draft from first check to sign-off, recorded from this app</small></div>',
+                    unsafe_allow_html=True)
+        v1, _ = st.columns([2, 1])
+        with v1:
+            theme.demo_video()
 with st.container(key="hc_search"):
     q = st.text_input("Search help", key="hc_q", placeholder="Search for help, e.g. “expired”, “approve”, “image”, “AI”",
                       label_visibility="collapsed")

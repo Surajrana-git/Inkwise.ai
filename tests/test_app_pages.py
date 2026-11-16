@@ -76,9 +76,10 @@ def test_login_one_click_cards_and_password_fallback():
     assert at.session_state["role"] == "Manager" and not at.exception
 
 
-def test_creator_lands_on_the_check_page_after_sign_in():
+def test_creator_lands_on_home_with_a_welcome_and_one_button_to_start():
     at = run("app/Home.py", ASHA)
-    assert any("Check a draft before it goes live" in m.value for m in at.markdown)
+    assert "You are Asha" in _all_md(at)
+    assert [b for b in at.button if b.key == "wel_go"][0].label == "Check a sample draft"
 
 
 def test_home_shows_tour_and_measured_accuracy():
@@ -553,3 +554,13 @@ def test_a_file_in_the_wrong_box_still_goes_to_the_right_place(monkeypatch):
     assert "Your copy" in md and "Campaign image" in md and "Run the check" in md
     labels_up = " ".join(str(getattr(u, "label", "")) for u in at.get("file_uploader"))
     assert "PDF, Word or text file" in labels_up and "PNG or JPG" in labels_up
+
+
+@pytest.mark.parametrize("who,line", [("asha", "You are Asha"), ("meera", "You are Meera"), ("ravi", "You are Ravi")])
+def test_first_visit_shows_a_plain_welcome_that_can_be_hidden(who, line):
+    """User test (16 Nov): five people found the app hard to start. Home now says who you are and where to begin."""
+    person = {"asha": ASHA, "meera": MEERA, "ravi": RAVI}[who]
+    at = run("app/Home.py", {**person, "landed_for": who})
+    assert line in _all_md(at) and "wel_go" in [b.key for b in at.button]
+    at.button(key="wel_hide").click().run()
+    assert line not in _all_md(at)

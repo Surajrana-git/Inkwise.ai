@@ -69,12 +69,7 @@ if not theme.REQUIRE_LOGIN:
 
 role = st.session_state.role
 user = st.session_state.user
-if role == "Creator" and st.session_state.get("landed_for") != user:
-    st.session_state.landed_for = user
-    try:
-        st.switch_page(PAGE_REVIEW)
-    except Exception:
-        pass
+# everyone lands on their own Home first: a new person needs the welcome card before the work page
 first = theme.full_name(user).split()[0]
 
 import datetime as _dt
@@ -87,6 +82,7 @@ SUB = {
     "Reviewer": "Drafts waiting for a decision, with the evidence behind every finding.",
 }
 theme.page_header(f"{theme.WORKSPACE.get(role, ('Workspace', ''))[0]} · {theme.ORG}", f"{greet}, {first}", SUB.get(role, ""))
+theme.welcome()
 
 wf_error, stats, queue, activity, facts, submissions, unclear = None, {}, [], [], [], [], 0
 try:

@@ -706,6 +706,75 @@ WORKSPACE_PAGES = {
 }
 
 
+DEMO_VIDEO = APP_DIR / "assets" / "demo.mp4"
+
+
+def demo_video(caption: bool = True) -> bool:
+    """The 90-second walkthrough recorded from the real app. False when the file is missing."""
+    if not DEMO_VIDEO.exists():
+        return False
+    st.video(str(DEMO_VIDEO))
+    if caption:
+        st.caption("One draft from first check to sign-off: Asha checks and sends it, Meera approves it, "
+                   "Ravi renews an expired fact. No sound; captions on screen.")
+    return True
+
+
+WELCOME = {   # what a first-time person needs to know, in plain words, and the one place to start
+    "Creator": ("You are Asha, a content creator.",
+                "Before anything is published, check it here. Inkwise marks every problem in your copy and shows the "
+                "brand rule or fact behind it. You decide what to change, then send the draft to your manager.",
+                "Check a sample draft", "pages/1_Review.py"),
+    "Manager": ("You are Meera, the manager.",
+                "Drafts from your team arrive in the Approval queue. You see what Inkwise found and what the creator "
+                "decided, then approve the draft or send it back with a comment.",
+                "Open the approval queue", "pages/Approvals.py"),
+    "Reviewer": ("You review drafts.",
+                 "Drafts arrive in the Approval queue. Read what Inkwise found and what the creator decided, then "
+                 "approve or send back.", "Open the approval queue", "pages/Approvals.py"),
+    "Admin": ("You are Ravi, the brand admin.",
+              "You keep the brand kit current. Facts have owners and expiry dates; renew an expired one and every "
+              "open draft that uses it is checked again.", "Open the Fact Register", "pages/Fact_Register.py"),
+}
+
+
+def welcome() -> None:
+    """First visit per person: who you are, what you do here, one button to start, and the demo video."""
+    ss = st.session_state
+    user, role = ss.get("user", ""), ss.get("role", "Creator")
+    hidden = ss.setdefault("welcome_hidden", set())
+    if user in hidden or role not in WELCOME:
+        return
+    who, what, go_label, page = WELCOME[role]
+    with st.container(key="iw_welcome"):
+        c1, c2 = st.columns([3.2, 1.3], gap="large")
+        with c1:
+            st.markdown(f'<div class="iw-wel"><small>NEW HERE? START WITH THIS</small><h3>{html.escape(who)}</h3>'
+                        f'<p>{html.escape(what)}</p></div>', unsafe_allow_html=True)
+            b1, b2, b3 = st.columns([1.3, 1.3, 1])
+            with b1:
+                if st.button(go_label, key="wel_go", type="primary", width="stretch"):
+                    hidden.add(user)
+                    if role == "Creator":
+                        smp = next((x for x in services.demo_samples() if x["id"] == "launch"), None)
+                        if smp:
+                            ss.rv_text, ss.rv_title = smp["text"], smp["title"].split(" (")[0]
+                    try:
+                        st.switch_page(page)
+                    except Exception:
+                        st.rerun()
+            b2.button("Show me the whole story", key="wel_story", width="stretch",
+                      on_click=lambda: (hidden.add(user), ss.__setitem__("journey_hidden", False)),
+                      help="A five-step walkthrough on Check a draft; each step signs you in as the right person")
+            b3.button("Hide", key="wel_hide", on_click=hidden.add, args=(user,))
+        with c2:
+            if not demo_video(caption=False):
+                st.markdown('<div class="iw-wel-side">Every page has <b>Help</b> in the tabs, and the bell shows '
+                            'what needs you.</div>', unsafe_allow_html=True)
+            else:
+                st.caption("90-second demo · no sound")
+
+
 def can_open(page: str, role: str) -> bool:
     if page not in WORKSPACE_PAGES:
         return True
@@ -832,6 +901,17 @@ SHELL_CSS = f"""
 [class*="st-key-iw_attn_"] [data-testid="stPageLink"] a {{ background:{NAVY} !important; border-radius:10px !important;
   justify-content:center; padding:8px 12px !important; }}
 [class*="st-key-iw_attn_"] [data-testid="stPageLink"] a p {{ color:#fff !important; font-weight:650 !important; }}
+.st-key-iw_welcome {{ background:linear-gradient(135deg,#13213F 0%,#1B2A4E 100%); border-radius:16px;
+  padding:18px 22px 14px; margin:2px 0 12px; }}
+.iw-wel small {{ font-size:.66rem; letter-spacing:.14em; color:#7FE6D2; font-weight:700; }}
+.iw-wel h3 {{ font-family:'Instrument Serif', Georgia, serif !important; font-weight:400 !important; color:#fff !important;
+  font-size:1.6rem !important; margin:4px 0 6px !important; padding:0 !important; }}
+.iw-wel p {{ color:rgba(255,255,255,.82); font-size:.92rem; line-height:1.5; margin:0 0 10px; max-width:640px; }}
+.iw-wel-side {{ color:rgba(255,255,255,.8); font-size:.85rem; padding-top:18px; }}
+.st-key-iw_welcome [data-testid="stCaptionContainer"] p {{ color:rgba(255,255,255,.65) !important; }}
+.st-key-iw_welcome .stButton button[kind="secondary"] {{ background:transparent !important; color:#fff !important;
+  border:1px solid rgba(255,255,255,.35) !important; }}
+.st-key-iw_welcome .stButton button[kind="secondary"] p {{ color:#fff !important; }}
 .iw-guard {{ display:flex; gap:16px; align-items:flex-start; background:#fff; border:1px solid #E2E7F0; border-radius:16px;
   padding:22px 24px; margin:26px 0 14px; box-shadow:0 8px 24px rgba(20,24,33,.05); max-width:760px; }}
 .iw-guard .ic {{ width:44px; height:44px; border-radius:12px; background:#E8F6F2; color:#0B5E52; display:flex;
