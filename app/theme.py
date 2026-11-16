@@ -773,7 +773,7 @@ def welcome() -> None:
         return
     who, what, go_label, page = WELCOME[role]
     with st.container(key="iw_welcome"):
-        c1, c2 = st.columns([3.2, 1.3], gap="large")
+        c1, c2 = st.columns([2.7, 1.3], gap="large", vertical_alignment="center")
         with c1:
             st.markdown(f'<div class="iw-wel"><small>NEW HERE? START WITH THIS</small><h3>{html.escape(who)}</h3>'
                         f'<p>{html.escape(what)}</p></div>', unsafe_allow_html=True)
@@ -795,7 +795,7 @@ def welcome() -> None:
             b3.button("Hide", key="wel_hide", on_click=hidden.add, args=(user,))
         with c2:
             if role_video(role):
-                st.caption("Your job in about a minute, with voice-over · the whole journey is in Help")
+                st.caption("About a minute, with voice-over · the whole journey is in Help")
             else:
                 st.markdown('<div class="iw-wel-side">Every page has <b>Help</b> in the tabs, and the bell shows '
                             'what needs you.</div>', unsafe_allow_html=True)
@@ -933,6 +933,10 @@ SHELL_CSS = f"""
 .iw-wel h3 {{ font-family:'Instrument Serif', Georgia, serif !important; font-weight:400 !important; color:#fff !important;
   font-size:1.6rem !important; margin:4px 0 6px !important; padding:0 !important; }}
 .iw-wel p {{ color:rgba(255,255,255,.82); font-size:.92rem; line-height:1.5; margin:0 0 10px; max-width:640px; }}
+.st-key-iw_welcome [data-testid="stImage"] img {{ max-height:132px; width:100%; object-fit:cover; object-position:top;
+  border-radius:10px; border:1px solid rgba(255,255,255,.18); }}
+.st-key-iw_welcome [data-testid="stVerticalBlock"] {{ gap:.5rem; }}
+.st-key-iw_welcome [class*="st-key-vid_"] button {{ min-height:38px; }}
 .iw-wel-side {{ color:rgba(255,255,255,.8); font-size:.85rem; padding-top:18px; }}
 .st-key-iw_welcome [data-testid="stCaptionContainer"] p {{ color:rgba(255,255,255,.65) !important; }}
 .st-key-iw_welcome .stButton button[kind="secondary"] {{ background:transparent !important; color:#fff !important;
@@ -1046,12 +1050,12 @@ SHELL_CSS = f"""
 .iw-tab-fallback {{ display:block; text-align:center; padding:7px 12px; min-height:36px; border-radius:999px;
   font-size:.84rem; font-weight:600; white-space:nowrap; border:1px solid transparent; }}
 .st-key-iw_user [data-testid="stPopover"] button {{ background:transparent !important; border:none !important;
-  padding:4px 6px 4px 50px !important; min-height:46px; position:relative; justify-content:flex-start; }}
+  padding:4px 8px 4px 56px !important; min-height:48px; position:relative; justify-content:flex-start; margin-left:6px; }}
 .st-key-iw_user [data-testid="stPopover"] button p {{ text-align:left; line-height:1.25; font-size:.78rem; white-space:nowrap;
   color:{MUTED} !important; font-weight:400 !important; }}
 .st-key-iw_user [data-testid="stPopover"] button p strong {{ display:block; color:{NAVY}; font-size:.9rem; font-weight:600; }}
-.st-key-iw_user [data-testid="stPopover"] button::before {{ content:var(--iw-initials); position:absolute; left:4px; top:50%;
-  transform:translateY(-50%); width:38px; height:38px; border-radius:50%; background:{NAVY}; color:#fff;
+.st-key-iw_user [data-testid="stPopover"] button::before {{ content:var(--iw-initials); position:absolute; left:6px; top:50%;
+  transform:translateY(-50%); width:40px; height:40px; border-radius:50%; background:{NAVY}; color:#fff;
   font-weight:700; font-size:.8rem; display:flex; align-items:center; justify-content:center; letter-spacing:.03em; }}
 [data-testid="stPopoverBody"] {{ min-width:300px; padding:8px !important; border-radius:12px !important; }}
 .iw-menu-h {{ font-size:.68rem; letter-spacing:.14em; font-weight:700; color:#8A93A6; padding:6px 10px 6px; }}
@@ -1068,7 +1072,9 @@ SHELL_CSS = f"""
   position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:.78rem; }}
 .st-key-iw_bell [data-testid="stPopover"] > div > button, .st-key-iw_bell [data-testid="stPopover"] button {{
   background:rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:999px !important;
-  min-height:38px; width:42px; padding:0 !important; position:relative; justify-content:center; }}
+  min-height:40px; width:44px; padding:0 !important; position:relative; justify-content:center; margin:0 auto; }}
+.st-key-iw_header .st-key-iw_bell {{ display:flex; align-items:center; justify-content:center; }}
+.st-key-iw_header [data-testid="stColumn"]:has(.iw-status) {{ display:flex; justify-content:center; }}
 .st-key-iw_bell [data-testid="stPopover"] button:hover {{ background:rgba(255,255,255,.12) !important; }}
 .st-key-iw_bell [data-testid="stPopover"] button p {{ font-size:1rem; }}
 .st-key-iw_bell [data-testid="stPopover"] button svg {{ display:none; }}
@@ -1473,7 +1479,7 @@ def header() -> None:
             f'<i class="pill ws">{html.escape(WORKSPACE.get(role, ("Workspace", ""))[0])}</i>'
             '<i class="pill">Demo workspace · Lumora is a fictional brand</i>'
             '<span class="sp"></span><span>Built by <b>DECODIANS</b></span></div>', unsafe_allow_html=True)
-        c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.75, 6.2, 1.15, 0.55, 1.95], vertical_alignment="center",
+        c_logo, c_tabs, c_status, c_bell, c_user = st.columns([1.7, 5.7, 1.3, 0.75, 2.05], vertical_alignment="center",
                                                               gap="small")
         with c_logo:
             st.markdown(wordmark(True, 44), unsafe_allow_html=True)
