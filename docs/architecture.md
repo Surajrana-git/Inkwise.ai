@@ -9,7 +9,7 @@ intent, and routes the content through a human approval workflow with a full aud
 
 The system is split into a **pure Python engine** (`engine/`) and a **Streamlit UI** (`app/`).
 The UI only calls the engine through `app/services.py`, so the engine can be tested on its own
-(206 automated tests in total) and reused behind another interface later.
+(212 automated tests in total) and reused behind another interface later.
 
 ```mermaid
 flowchart LR

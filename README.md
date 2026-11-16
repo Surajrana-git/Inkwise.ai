@@ -30,7 +30,7 @@ the name in the top-right corner, and the **Help** tab answers every question be
 | **Meera Kapoor** | Manager | Approval queue → read the readiness checks and the creator's decisions → **Approve** or **Send back** (a comment is required). Insights → unclear guidelines, review times. |
 | **Ravi Sharma** | Admin | Fact Register → renew an expired fact → open drafts that cite it are re-checked. Accept a clearer guideline wording in Insights. |
 
-Each person has their own workspace with only the tabs they need: **Creator studio** (Check a draft, My drafts), **Approval desk** (Approval queue, Insights, All drafts) and **Admin console** (Fact Register, Insights, All drafts). Home opens with the one thing that needs you now. **Check a draft** also has a five-step walkthrough that signs you in as the right person for each step.
+Each person has their own workspace with only the tabs they need: **Creator studio** (Check a draft, My drafts), **Approval desk** (Approval queue, Insights, All drafts) and **Admin console** (Fact Register, Insights, All drafts). On the first visit, each person's Home opens with a **welcome card**: who you are, your three steps, one button to start, and a one-minute video of your own job with voice-over (it loads only when you press play). Below it, one line says what needs you now. Switching person always opens the new person's Home. **Check a draft** also has a five-step walkthrough that signs you in as the right person for each step, and the **Help Centre** has the 2½-minute whole-journey video.
 
 All data is synthetic: **Lumora** is a fictional fintech brand written by the team. The evaluation drafts were generated with **Adaption Labs** and labelled by hand.
 
@@ -40,16 +40,18 @@ Taken from the running app with the demo data. Every screen below is one click a
 
 | | |
 |---|---|
-| **Sign in:** pick a demo person, no password | **Creator studio:** a welcome card and Asha's own demo video on the first visit |
+| **Sign in:** pick a demo person, no password | **Creator studio:** who you are, your three steps, your own one-minute demo |
 | ![Sign in](docs/screenshots/sign-in.jpg) | ![Creator home](docs/screenshots/home-creator.jpg) |
 | **Check a draft:** three numbered steps; every finding highlighted, with its source, owner and expiry | **Image check:** the banner is checked with the copy; problems are boxed and numbered |
 | ![Check a draft](docs/screenshots/check-a-draft.jpg) | ![Image check](docs/screenshots/image-check.jpg) |
-| **Approval queue:** readiness checks and tracked changes before sign-off | **Approval desk:** the Manager's Home |
+| **Approval queue:** readiness checks and tracked changes before sign-off | **Approval desk:** Meera's Home, with her three steps and what is waiting |
 | ![Approval queue](docs/screenshots/approval-queue.jpg) | ![Manager home](docs/screenshots/home-manager.jpg) |
 | **Fact Register:** owners, expiry dates, renew and re-check | **Guideline insights:** override and reject rates, review times |
 | ![Fact Register](docs/screenshots/fact-register.jpg) | ![Insights](docs/screenshots/insights.jpg) |
-| **All drafts:** audit trail and PDF audit report for every draft | **Admin console:** facts and guidelines first |
+| **All drafts:** audit trail and PDF audit report for every draft | **Admin console:** Ravi's Home, expired facts first |
 | ![All drafts](docs/screenshots/all-drafts.jpg) | ![Admin home](docs/screenshots/home-admin.jpg) |
+| **Help Centre:** the whole-journey video and one per person, guides and FAQ | |
+| ![Help Centre](docs/screenshots/help-centre.jpg) | |
 
 ## What it does
 
@@ -61,11 +63,13 @@ Taken from the running app with the demo data. Every screen below is one click a
    image.
 3. **Decide:** Accept, Edit or Reject. The draft updates live as tracked changes; **Final copy** shows the clean text.
 4. **Sign off:** only a Manager approves or sends back, never on their own draft.
-5. **Audit:** History has every draft with who decided what and when, a **PDF audit report** per draft and CSV export.
+5. **Audit:** My drafts / All drafts list every draft with who decided what and when, a **PDF audit report** per draft and CSV export.
 6. **Improve:** Insights shows guidelines people keep overriding, repeat issues by category, creator or team, and how
    long each review stage takes.
 7. **Stay informed:** a notification bell tells a Manager when a draft arrives, the creator when it is approved or sent
    back, and an Admin when a fact expires. A browser refresh keeps you signed in on the same page.
+8. **Get started without help:** a workspace per person with only the tabs they need, a welcome card with their three
+   steps and their own demo video, three numbered steps on Check a draft, and a Help Centre with guides, FAQ and videos.
 
 ## The three Round 3 improvements (committed in Round 2)
 
@@ -129,7 +133,7 @@ app/             Streamlit pages: Home, Review, Approvals, Fact Register, Insigh
 data/brand_kit/  Lumora guidelines (15), facts (20), glossary (15), image rules and palette
 eval/            labelled sets, fact-freshness group, evaluation scripts and results
 docs/            delivery, architecture, testing, responsible design, limitations and roadmap, deploy, disclosures
-tests/           206 automated tests
+tests/           212 automated tests
 ```
 
 ## Run locally
@@ -140,7 +144,7 @@ source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt        # macOS with Python 3.9: pip install "cryptography<45" first
 cp .env.example .env                   # add GEMINI_API_KEY (optional: every rule check works without it)
 streamlit run app/Home.py
-pytest                                 # 206 tests
+pytest                                 # 212 tests
 ```
 
 ## AI assistance

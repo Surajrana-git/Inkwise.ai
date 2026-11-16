@@ -2,7 +2,7 @@
 
 How we know Inkwise works, and how to check it yourself.
 
-## 1. Automated tests: 206
+## 1. Automated tests: 212
 
 `pytest` runs every test headless, against a temporary database, with no Gemini key, so the rule checks and the
 whole workflow are exercised exactly as a judge would meet them offline.
