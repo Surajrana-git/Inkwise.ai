@@ -764,6 +764,20 @@ WELCOME = {   # what a first-time person needs to know, in plain words, and the 
 }
 
 
+WELCOME_STEPS = {
+    "Creator": [("Check a draft", "paste your copy, pick a sample, or import a PDF or Word file; add the campaign image if you have one"),
+                ("Decide each finding", "accept the suggested fix, edit it in your own words, or reject it; the draft updates live"),
+                ("Send it to your manager", "the bell tells you when it is approved or sent back with a comment")],
+    "Manager": [("Open the Approval queue", "each draft is marked ready or needs a look"),
+                ("Read before you sign", "readiness checks, what the creator changed, and what was decided on each finding"),
+                ("Approve or send back", "a comment is required to send back; Insights shows which rules people find unclear")],
+    "Admin": [("Renew expired facts", "in the Fact Register; every open draft that uses the fact is checked again"),
+              ("Settle unclear guidelines", "in Insights, accept a clearer wording; it is logged"),
+              ("Keep the brand kit current", "guidelines, facts with owners and expiry dates, glossary and image rules")],
+}
+WELCOME_STEPS["Reviewer"] = WELCOME_STEPS["Manager"]
+
+
 def welcome() -> None:
     """First visit per person: who you are, what you do here, one button to start, and the demo video."""
     ss = st.session_state
@@ -773,10 +787,12 @@ def welcome() -> None:
         return
     who, what, go_label, page = WELCOME[role]
     with st.container(key="iw_welcome"):
-        c1, c2 = st.columns([2.7, 1.3], gap="large", vertical_alignment="center")
+        c1, c2 = st.columns([1.55, 1], gap="large")
         with c1:
+            steps = "".join(f'<li><i>{n}</i><div><b>{html.escape(a)}</b><span>{html.escape(b)}</span></div></li>'
+                            for n, (a, b) in enumerate(WELCOME_STEPS.get(role, []), 1))
             st.markdown(f'<div class="iw-wel"><small>NEW HERE? START WITH THIS</small><h3>{html.escape(who)}</h3>'
-                        f'<p>{html.escape(what)}</p></div>', unsafe_allow_html=True)
+                        f'<p>{html.escape(what)}</p><ol class="iw-wel-steps">{steps}</ol></div>', unsafe_allow_html=True)
             b1, b2, b3 = st.columns([1.3, 1.3, 1])
             with b1:
                 if st.button(go_label, key="wel_go", type="primary", width="stretch"):
@@ -795,7 +811,7 @@ def welcome() -> None:
             b3.button("Hide", key="wel_hide", on_click=hidden.add, args=(user,))
         with c2:
             if role_video(role):
-                st.caption("About a minute, with voice-over · the whole journey is in Help")
+                st.caption("Your job in about a minute, with voice-over · the whole journey is in Help")
             else:
                 st.markdown('<div class="iw-wel-side">Every page has <b>Help</b> in the tabs, and the bell shows '
                             'what needs you.</div>', unsafe_allow_html=True)
@@ -933,10 +949,17 @@ SHELL_CSS = f"""
 .iw-wel h3 {{ font-family:'Instrument Serif', Georgia, serif !important; font-weight:400 !important; color:#fff !important;
   font-size:1.6rem !important; margin:4px 0 6px !important; padding:0 !important; }}
 .iw-wel p {{ color:rgba(255,255,255,.82); font-size:.92rem; line-height:1.5; margin:0 0 10px; max-width:640px; }}
-.st-key-iw_welcome [data-testid="stImage"] img {{ max-height:132px; width:100%; object-fit:cover; object-position:top;
-  border-radius:10px; border:1px solid rgba(255,255,255,.18); }}
+.st-key-iw_welcome [data-testid="stImage"] img {{ border-radius:10px; border:1px solid rgba(255,255,255,.18); }}
 .st-key-iw_welcome [data-testid="stVerticalBlock"] {{ gap:.5rem; }}
 .st-key-iw_welcome [class*="st-key-vid_"] button {{ min-height:38px; }}
+.iw-wel p {{ font-size:1rem !important; max-width:none !important; }}
+.iw-wel-steps {{ list-style:none; padding:0; margin:6px 0 16px; display:flex; flex-direction:column; gap:10px; }}
+.iw-wel-steps li {{ display:flex; gap:12px; align-items:flex-start; background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px 14px; }}
+.iw-wel-steps i {{ font-style:normal; width:26px; height:26px; border-radius:50%; background:#3FD0B6; color:#0D1A31;
+  font-weight:700; font-size:.8rem; display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px; }}
+.iw-wel-steps b {{ display:block; color:#fff; font-size:.95rem; font-weight:650; }}
+.iw-wel-steps span {{ color:rgba(255,255,255,.72); font-size:.86rem; line-height:1.45; }}
 .iw-wel-side {{ color:rgba(255,255,255,.8); font-size:.85rem; padding-top:18px; }}
 .st-key-iw_welcome [data-testid="stCaptionContainer"] p {{ color:rgba(255,255,255,.65) !important; }}
 .st-key-iw_welcome .stButton button[kind="secondary"] {{ background:transparent !important; color:#fff !important;
